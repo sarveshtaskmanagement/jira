@@ -412,6 +412,90 @@
             grid-column: 1 / -1;
         }
 
+        .worklog-detail-widget {
+            grid-column: 1 / -1;
+        }
+
+        .worklog-input-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .worklog-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 200px;
+        }
+
+        .worklog-select {
+            padding: 8px 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fff;
+        }
+
+        .worklog-select:focus {
+            border-color: #1868DB;
+            box-shadow: 0 0 0 3px rgba(24, 104, 219, 0.15);
+        }
+
+        .worklog-detail-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .worklog-detail-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .worklog-detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .worklog-detail-time {
+            font-weight: 600;
+            color: #1868DB;
+            white-space: nowrap;
+            min-width: 80px;
+        }
+
+        .worklog-detail-key {
+            font-weight: 600;
+            color: #1868DB;
+            white-space: nowrap;
+            min-width: 100px;
+            margin-right: 15px;
+        }
+
+        .worklog-detail-key a {
+            color: #1868DB;
+            text-decoration: none;
+            cursor: pointer;
+            transition: text-decoration 0.2s;
+        }
+
+        .worklog-detail-key a:hover {
+            text-decoration: underline;
+        }
+
+        .worklog-detail-description {
+            flex: 1;
+            color: #444;
+            word-wrap: break-word;
+        }
+
         .time-low-hours {
             color: #d32f2f;
             font-weight: 600;
@@ -616,14 +700,71 @@
             qaFailedCount: ''
         };
 
+        function resetAllSelections() {
+            // Reset filters
+            filters.key = '';
+            filters.summary = '';
+            filters.statusValues = [];
+            filters.assigneeValues = [];
+            filters.priorityValues = [];
+            filters.storyPoints = '';
+            filters.timeOriginalEstimate = '';
+            filters.actualHours = '';
+            filters.timeDifference = '';
+            filters.created = '';
+            filters.updated = '';
+            filters.qaFailedCount = '';
+            
+            // Reset column visibility to defaults
+            columnVisibility.serial = true;
+            columnVisibility.key = true;
+            columnVisibility.summary = false;
+            columnVisibility.status = true;
+            columnVisibility.assignee = true;
+            columnVisibility.priority = false;
+            columnVisibility.storyPoints = true;
+            columnVisibility.timeOriginalEstimate = true;
+            columnVisibility.actualHours = true;
+            columnVisibility.timeDifference = true;
+            columnVisibility.created = false;
+            columnVisibility.updated = false;
+            columnVisibility.qaFailedCount = true;
+            
+            // Reset sort settings
+            sortField = null;
+            sortDir = 'asc';
+            
+            // Reset view mode
+            viewMode = 'table';
+            
+            // Reset widget selections - explicitly set to undefined to ensure they're truly reset
+            window.selectedWorklogDate = undefined;
+            window.selectedWorklogDetailDate = undefined;
+            window.selectedWorklogDetailAssignee = undefined;
+            
+            // Close any open dropdowns
+            closeDropdowns();
+            
+            // Clear any filter input fields if they exist in the DOM
+            const filterInputs = document.querySelectorAll('#ticketsContainer input[type="text"]');
+            filterInputs.forEach(input => {
+                if (input.placeholder && input.placeholder.toLowerCase().includes('search')) {
+                    input.value = '';
+                }
+            });
+        }
+
         function switchTab(tab) {
             activeTab = tab;
             document.getElementById('tabLicensing').classList.toggle('active', tab === 'licensing');
             document.getElementById('tabAssessments').classList.toggle('active', tab === 'assessments');
+            
+            // Reset all user selections to defaults
+            resetAllSelections();
+            
             hideError();
             showLoading(false);
             updateStatus('Enter email, password, then click Update');
-            viewMode = 'table';
             updateDashboardButton();
             const container = document.getElementById('ticketsContainer');
             container.innerHTML = `
@@ -745,6 +886,106 @@
             if (viewMode === 'dashboard') {
                 renderDashboard(lastTickets);
             }
+        }
+
+        function updateWorklogDetailDate(date) {
+            window.selectedWorklogDetailDate = date;
+            if (viewMode === 'dashboard') {
+                renderDashboard(lastTickets);
+            }
+        }
+
+        function updateWorklogDetailAssignee(assignee) {
+            window.selectedWorklogDetailAssignee = assignee;
+            if (viewMode === 'dashboard') {
+                renderDashboard(lastTickets);
+            }
+        }
+
+        function renderWorklogDetailWidget(tickets) {
+            // Get today's date
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            
+            // Get all unique assignees
+            const allAssignees = new Set();
+            tickets.forEach(t => {
+                const assignee = (t.assignee || 'Unassigned').trim();
+                if (assignee) allAssignees.add(assignee);
+            });
+            const assigneesList = Array.from(allAssignees).sort();
+            
+            // Get selected date and assignee (default to today and first assignee)
+            // Explicitly check if property exists and is not undefined/null
+            const selectedDate = (window.selectedWorklogDetailDate !== undefined && window.selectedWorklogDetailDate !== null) 
+                ? window.selectedWorklogDetailDate 
+                : todayStr;
+            const selectedAssignee = (window.selectedWorklogDetailAssignee !== undefined && window.selectedWorklogDetailAssignee !== null)
+                ? window.selectedWorklogDetailAssignee
+                : (assigneesList.length > 0 ? assigneesList[0] : '');
+            
+            // Initialize if not set
+            if (window.selectedWorklogDetailDate === undefined || window.selectedWorklogDetailDate === null) {
+                window.selectedWorklogDetailDate = todayStr;
+            }
+            if ((window.selectedWorklogDetailAssignee === undefined || window.selectedWorklogDetailAssignee === null) && assigneesList.length > 0) {
+                window.selectedWorklogDetailAssignee = assigneesList[0];
+            }
+            
+            // Get worklog details
+            const worklogDetails = getWorklogDetailsByDateAndAssignee(tickets, selectedDate, selectedAssignee);
+            
+            // Build assignee options
+            const assigneeOptions = assigneesList.map(assignee => 
+                `<option value="${assignee}" ${assignee === selectedAssignee ? 'selected' : ''}>${assignee}</option>`
+            ).join('');
+            
+            // Build worklog detail list
+            const worklogDetailList = worklogDetails.length > 0 
+                ? worklogDetails.map(detail => {
+                    const ticketKeyDisplay = detail.ticketKey || 'N/A';
+                    const ticketKeyHtml = detail.ticketUrl 
+                        ? `<a href="${detail.ticketUrl}" target="_blank" onclick="event.stopPropagation();">${ticketKeyDisplay}</a>`
+                        : ticketKeyDisplay;
+                    return `
+                    <li class="worklog-detail-item">
+                        <span class="worklog-detail-time">${formatTimeHoursMinutes(detail.timeSpent)}</span>
+                        <span class="worklog-detail-key">${ticketKeyHtml}</span>
+                        <span class="worklog-detail-description">${detail.description}</span>
+                    </li>
+                `;
+                }).join('')
+                : '<li class="worklog-detail-item"><span class="worklog-detail-description">No worklogs found for this date and assignee.</span></li>';
+            
+            const totalTime = worklogDetails.reduce((sum, detail) => sum + detail.timeSpent, 0);
+            const totalFormatted = formatTimeHoursMinutes(totalTime);
+            
+            return `
+                <div class="dash-card worklog-detail-widget">
+                    <h3>Worklog Details</h3>
+                    <div class="worklog-input-container">
+                        <div class="worklog-input-group">
+                            <label class="date-picker-label" for="worklogDetailDatePicker">Date:</label>
+                            <input type="date" id="worklogDetailDatePicker" class="date-picker-input" value="${selectedDate}" onchange="updateWorklogDetailDate(this.value)">
+                        </div>
+                        <div class="worklog-input-group">
+                            <label class="date-picker-label" for="worklogDetailAssigneePicker">Assignee:</label>
+                            <select id="worklogDetailAssigneePicker" class="worklog-select" onchange="updateWorklogDetailAssignee(this.value)">
+                                ${assigneeOptions}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="dash-section">
+                        <div class="dash-section-title">
+                            <span>Total Time</span>
+                            <span class="section-count">${totalFormatted}</span>
+                        </div>
+                    </div>
+                    <ul class="worklog-detail-list">
+                        ${worklogDetailList}
+                    </ul>
+                </div>
+            `;
         }
 
         function updateDashboardButton() {
@@ -1028,6 +1269,63 @@
             return assigneeTimeMap;
         }
 
+        function extractTextFromComment(comment) {
+            if (!comment || !comment.content) return '';
+            
+            let text = '';
+            
+            function extractFromContent(content) {
+                if (Array.isArray(content)) {
+                    content.forEach(item => {
+                        if (item.type === 'text' && item.text) {
+                            text += item.text + ' ';
+                        } else if (item.content) {
+                            extractFromContent(item.content);
+                        }
+                    });
+                }
+            }
+            
+            extractFromContent(comment.content);
+            return text.trim();
+        }
+
+        function getWorklogDetailsByDateAndAssignee(tickets, selectedDate, selectedAssignee) {
+            if (!selectedDate || !selectedAssignee) return [];
+            
+            const worklogDetails = [];
+            const selectedDateStr = selectedDate;
+            
+            tickets.forEach(ticket => {
+                if (!ticket.worklog || !ticket.worklog.worklogs) return;
+                
+                ticket.worklog.worklogs.forEach(worklog => {
+                    if (!worklog.started || !worklog.timeSpentSeconds || !worklog.author) return;
+                    
+                    const worklogDateStr = worklog.started.split('T')[0];
+                    const assigneeName = worklog.author.displayName || 'Unknown';
+                    
+                    // Check if worklog matches selected date and assignee
+                    if (worklogDateStr === selectedDateStr && assigneeName === selectedAssignee) {
+                        const description = extractTextFromComment(worklog.comment) || 'No description';
+                        worklogDetails.push({
+                            timeSpent: worklog.timeSpentSeconds,
+                            timeSpentFormatted: worklog.timeSpent || formatTimeHoursMinutes(worklog.timeSpentSeconds),
+                            description: description,
+                            ticketKey: ticket.key,
+                            ticketUrl: ticket.url,
+                            started: worklog.started
+                        });
+                    }
+                });
+            });
+            
+            // Sort by started time (most recent first)
+            worklogDetails.sort((a, b) => new Date(b.started) - new Date(a.started));
+            
+            return worklogDetails;
+        }
+
         function renderDashboard(tickets) {
             const container = document.getElementById('ticketsContainer');
             if (!tickets || tickets.length === 0) {
@@ -1130,10 +1428,13 @@
             const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
             
             // Get worklogs for selected date (default to today)
-            const selectedDate = window.selectedWorklogDate || todayStr;
+            // Explicitly check if property exists and is not undefined/null
+            const selectedDate = (window.selectedWorklogDate !== undefined && window.selectedWorklogDate !== null)
+                ? window.selectedWorklogDate
+                : todayStr;
             
             // Initialize window.selectedWorklogDate if not set
-            if (!window.selectedWorklogDate) {
+            if (window.selectedWorklogDate === undefined || window.selectedWorklogDate === null) {
                 window.selectedWorklogDate = todayStr;
             }
             const assigneeTimeMap = getWorklogsByDate(tickets, selectedDate);
@@ -1201,6 +1502,7 @@
                             ${assigneeTimeList || '<li><span>No time logged</span><span>0m</span></li>'}
                         </ul>
                     </div>
+                    ${renderWorklogDetailWidget(tickets)}
                 </div>
             `;
         }
@@ -1420,7 +1722,7 @@
             updateStatus('Loading tickets...');
 
             try {
-                const parent = activeTab === 'assessments' ? 'EM-1460' : 'EM-896';
+                const parent = activeTab === 'assessments' ? 'EM-1460' : 'EM-5860';
                 const formBody = new URLSearchParams({ email, apiToken, parent }).toString();
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
