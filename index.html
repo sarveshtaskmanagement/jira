@@ -25,6 +25,7 @@
             margin: 0;
             background: white;
             overflow: hidden;
+            position: relative;
         }
 
         .header {
@@ -39,15 +40,28 @@
             margin-bottom: 10px;
         }
 
+        .controls-wrapper {
+            width: 100%;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
         .controls {
             padding: 20px 30px;
             background: white;
-            border-bottom: 1px solid #e0e0e0;
             display: grid;
-            grid-template-columns: 1fr 1fr auto;
+            grid-template-columns: 1fr 1fr auto auto;
             gap: 15px;
             align-items: end;
             max-width: 50%;
+        }
+
+        .fetch-time-container {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 11px;
+            color: #888;
+            font-style: italic;
         }
 
         .input-group {
@@ -72,6 +86,23 @@
         }
 
         .text-input:focus {
+            border-color: #1868DB;
+            box-shadow: 0 0 0 3px rgba(24, 104, 219, 0.15);
+        }
+
+        .select-input {
+            padding: 10px 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: white;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .select-input:focus {
             border-color: #1868DB;
             box-shadow: 0 0 0 3px rgba(24, 104, 219, 0.15);
         }
@@ -220,37 +251,6 @@
             color: #666;
         }
 
-        .tab-bar {
-            display: flex;
-            gap: 0;
-            padding: 0 30px;
-            background: white;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 14px 18px;
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            font-size: 16px;
-            font-weight: 600;
-            color: #666;
-            cursor: pointer;
-            transition: color 0.2s, border-color 0.2s, background 0.2s;
-        }
-
-        .tab-btn:hover {
-            color: #444;
-            background: rgba(24, 104, 219, 0.06);
-        }
-
-        .tab-btn.active {
-            color: #1868DB;
-            border-bottom-color: #1868DB;
-            background: rgba(24, 104, 219, 0.12);
-        }
 
 
         .tickets-table {
@@ -363,6 +363,19 @@
             padding: 6px 0;
             border-bottom: 1px solid #eee;
             font-size: 14px;
+        }
+
+        .dash-list li.clickable {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .dash-list li.clickable:hover {
+            background: rgba(24, 104, 219, 0.06);
+            padding-left: 4px;
+            padding-right: 4px;
+            margin-left: -4px;
+            margin-right: -4px;
         }
 
         .dash-list li span:last-child {
@@ -606,25 +619,76 @@
             color: #2e7d32;
             font-weight: 600;
         }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .widget-header h3 {
+            margin-bottom: 0;
+        }
+
+        .snapshot-icon {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+        }
+
+        .snapshot-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: #666;
+            transition: fill 0.2s;
+        }
+
+        .snapshot-icon:hover {
+            background: rgba(24, 104, 219, 0.1);
+        }
+
+        .snapshot-icon:hover svg {
+            fill: #1868DB;
+        }
+
+        .snapshot-icon:active {
+            background: rgba(24, 104, 219, 0.2);
+        }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <form class="controls" autocomplete="on" onsubmit="handleSubmit(event)">
+        <div class="controls-wrapper">
+            <form class="controls" autocomplete="on" onsubmit="handleSubmit(event)">
             <div class="input-group">
                 <label class="input-label" for="emailInput">Email</label>
-                <input class="text-input" id="emailInput" name="email" type="email" autocomplete="username" placeholder="name@example.com">
+                <input class="text-input" id="emailInput" name="email" type="email" autocomplete="username" placeholder="name@example.com" value="sarvesh.s@cardyai.com">
             </div>
             <div class="input-group">
                 <label class="input-label" for="tokenInput">Password</label>
                 <input class="text-input" id="tokenInput" name="password" type="password" autocomplete="current-password" placeholder="Enter your password">
             </div>
+            <div class="input-group">
+                <label class="input-label" for="moduleSelect">Module</label>
+                <select class="select-input" id="moduleSelect" onchange="switchModule(this.value)">
+                    <!-- Options will be populated dynamically from modules configuration -->
+                </select>
+            </div>
             <button class="action-btn" type="submit" id="updateBtn">Fetch</button>
-        </form>
-
-        <div class="tab-bar">
-            <button class="tab-btn active" id="tabLicensing" data-tab="licensing" onclick="switchTab('licensing')">Licensing</button>
-            <button class="tab-btn" id="tabAssessments" data-tab="assessments" onclick="switchTab('assessments')">Assessments</button>
+            </form>
+        </div>
+        <div class="fetch-time-container">
+            <span id="lastFetchTime"></span>
         </div>
 
         <div class="loading" id="loading">
@@ -635,26 +699,75 @@
 
         <div class="tickets-container" id="ticketsContainer">
             <div class="empty-state">
-                <h2>No tickets loaded</h2>
-                <p>Click the Fetch button after entering your email and password</p>
+                <h2>Data has not been loaded yet.</h2>
+                <p>Enter your email and password and click Fetch to continue.</p>
             </div>
         </div>
     </div>
 
     <script>
         // Add a timestamp to avoid caching issues
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwWoFfWT42r0vwCgsJFkDGjI3b06OZlUHssujHLBNNsoQuJDcVTGHbDq-6g89lYezxNuw/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJZR89idUZgp7CS_bt5d3I5ftDLjUlr6gbbfzib0zMUbfvPYGXnSrfQSCzlJ37H1zcoA/exec';
 
         function updateStatus(message) {
             // Status display removed
         }
 
-        let activeTab = 'licensing';
-        let viewMode = 'table'; // 'table' | 'dashboard'
+        // Module configuration - Add new modules here by providing module ID, display name, and EM ID
+        const modules = {
+            licensing: {
+                name: 'Licensing',
+                emId: 'EM-896'
+            },
+            assessments: {
+                name: 'Assessments',
+                emId: 'EM-1460'
+            },
+            testmodule: {
+                name: 'Testmodule',
+                emId: 'EM-5860'
+            }
+            // To add a new module, uncomment and modify:
+            // newModule: {
+            //     name: 'New Module',
+            //     emId: 'EM-XXXX'
+            // }
+        };
+
+        let activeModule = 'licensing'; // Default module
+        let viewMode = 'dashboard'; // 'table' | 'dashboard' | 'fr'
         let lastTickets = [];
         let sortField = null;
         let sortDir = 'asc';
         let openDropdown = null;
+
+        // Initialize module dropdown on page load
+        function initializeModuleDropdown() {
+            const moduleSelect = document.getElementById('moduleSelect');
+            if (!moduleSelect) return;
+            
+            // Clear existing options
+            moduleSelect.innerHTML = '';
+            
+            // Populate dropdown from modules configuration
+            Object.entries(modules).forEach(([id, module]) => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = module.name;
+                if (id === activeModule) {
+                    option.selected = true;
+                }
+                moduleSelect.appendChild(option);
+            });
+        }
+
+        // Initialize on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeModuleDropdown);
+        } else {
+            initializeModuleDropdown();
+        }
+
         const columns = [
             { id: 'serial', label: '#', sortable: null, className: 'serial-col' },
             { id: 'key', label: 'Key', sortable: 'key' },
@@ -669,73 +782,71 @@
             { id: 'created', label: 'Created', sortable: 'created' },
             { id: 'updated', label: 'Updated', sortable: 'updated' },
             { id: 'qaFailedCount', label: 'QA Loop', sortable: 'qaFailedCount', className: 'qa-col' },
+            { id: 'totalBugs', label: 'Total Bugs', sortable: 'totalBugs', className: 'qa-col' },
+            { id: 'openBugs', label: 'Open Bugs', sortable: 'openBugs', className: 'qa-col' },
         ];
-        const columnVisibility = {
-            serial: true,
-            key: true,
-            summary: false,
-            status: true,
-            assignee: true,
-            priority: false,
-            storyPoints: true,
-            timeOriginalEstimate: true,
-            actualHours: true,
-            timeDifference: true,
-            created: false,
-            updated: false,
-            qaFailedCount: true
-        };
-        const filters = {
-            key: '',
-            summary: '',
-            statusValues: [],
-            assigneeValues: [],
-            priorityValues: [],
-            storyPoints: '',
-            timeOriginalEstimate: '',
-            actualHours: '',
-            timeDifference: '',
-            created: '',
-            updated: '',
-            qaFailedCount: ''
-        };
+        
+        // Single source of truth for default column visibility
+        function getDefaultColumnVisibility() {
+            return {
+                serial: true,
+                key: true,
+                summary: false,
+                status: true,
+                assignee: true,
+                priority: false,
+                storyPoints: true,
+                timeOriginalEstimate: true,
+                actualHours: true,
+                timeDifference: true,
+                created: false,
+                updated: false,
+                qaFailedCount: true,
+                totalBugs: false,
+                openBugs: true
+            };
+        }
+        
+        const columnVisibility = getDefaultColumnVisibility();
+        
+        // Single source of truth for default filter values
+        function getDefaultFilters() {
+            return {
+                key: '',
+                summary: '',
+                statusValues: [],
+                assigneeValues: [],
+                priorityValues: [],
+                storyPoints: '',
+                timeOriginalEstimate: '',
+                actualHours: '',
+                timeDifference: '',
+                created: '',
+                updated: '',
+                qaFailedCount: '',
+                totalBugs: '',
+                openBugs: ''
+            };
+        }
+        
+        const filters = getDefaultFilters();
 
         function resetAllSelections() {
-            // Reset filters
-            filters.key = '';
-            filters.summary = '';
-            filters.statusValues = [];
-            filters.assigneeValues = [];
-            filters.priorityValues = [];
-            filters.storyPoints = '';
-            filters.timeOriginalEstimate = '';
-            filters.actualHours = '';
-            filters.timeDifference = '';
-            filters.created = '';
-            filters.updated = '';
-            filters.qaFailedCount = '';
+            // Reset filters to defaults
+            Object.assign(filters, getDefaultFilters());
             
             // Reset column visibility to defaults
-            columnVisibility.serial = true;
-            columnVisibility.key = true;
-            columnVisibility.summary = false;
-            columnVisibility.status = true;
-            columnVisibility.assignee = true;
-            columnVisibility.priority = false;
-            columnVisibility.storyPoints = true;
-            columnVisibility.timeOriginalEstimate = true;
-            columnVisibility.actualHours = true;
-            columnVisibility.timeDifference = true;
-            columnVisibility.created = false;
-            columnVisibility.updated = false;
-            columnVisibility.qaFailedCount = true;
+            Object.assign(columnVisibility, getDefaultColumnVisibility());
             
             // Reset sort settings
             sortField = null;
             sortDir = 'asc';
             
-            // Reset view mode
-            viewMode = 'table';
+            // Reset view mode to dashboard (default)
+            viewMode = 'dashboard';
+            
+            // Reset FR filters
+            Object.assign(frFilters, getDefaultFRFilters());
             
             // Reset widget selections - explicitly set to undefined to ensure they're truly reset
             window.selectedWorklogDate = undefined;
@@ -754,13 +865,29 @@
             });
         }
 
-        function switchTab(tab) {
-            activeTab = tab;
-            document.getElementById('tabLicensing').classList.toggle('active', tab === 'licensing');
-            document.getElementById('tabAssessments').classList.toggle('active', tab === 'assessments');
+        function switchModule(moduleId) {
+            // Validate module exists
+            if (!modules[moduleId]) {
+                console.error(`Module "${moduleId}" not found in configuration`);
+                return;
+            }
+            
+            activeModule = moduleId;
+            
+            // Update the select dropdown to reflect the current selection
+            const moduleSelect = document.getElementById('moduleSelect');
+            if (moduleSelect) {
+                moduleSelect.value = moduleId;
+            }
             
             // Reset all user selections to defaults
             resetAllSelections();
+            
+            // Hide fetch time when switching modules
+            const fetchTimeEl = document.getElementById('lastFetchTime');
+            if (fetchTimeEl) {
+                fetchTimeEl.textContent = '';
+            }
             
             hideError();
             showLoading(false);
@@ -769,8 +896,8 @@
             const container = document.getElementById('ticketsContainer');
             container.innerHTML = `
                 <div class="empty-state">
-                    <h2>No tickets loaded</h2>
-                    <p>Select a tab and click fetch to load Jira tickets</p>
+                    <h2>Data has not been loaded yet.</h2>
+                    <p>Enter your email and password and click Fetch to continue.</p>
                 </div>
             `;
             lastTickets = [];
@@ -816,8 +943,13 @@
             if (!exceptField) openDropdown = null;
         }
 
-        document.addEventListener('click', () => {
-            closeDropdowns();
+        document.addEventListener('click', (evt) => {
+            // Only close dropdowns if click is outside any dropdown
+            const clickedElement = evt.target;
+            const isInsideDropdown = clickedElement.closest('.multi-dd');
+            if (!isInsideDropdown) {
+                closeDropdowns();
+            }
         });
 
         function toggleMultiOption(field, value, checked, evt) {
@@ -832,7 +964,38 @@
             } else if (!checked && exists) {
                 filters[key] = arr.filter(v => v !== norm);
             }
-            renderTickets(lastTickets);
+            
+            // Update table body without re-rendering (which would close the dropdown)
+            updateTableBody(lastTickets);
+            
+            // Update the dropdown button label
+            const dropdownBtn = document.getElementById(`dropdown-btn-${field}`);
+            if (dropdownBtn) {
+                dropdownBtn.innerHTML = `${dropdownLabel(field)} <span class="caret">▾</span>`;
+            }
+        }
+
+        function clearMultiFilter(field, evt) {
+            if (evt) evt.stopPropagation();
+            filters[`${field}Values`] = [];
+            
+            // Update table body without re-rendering (which would close the dropdown)
+            updateTableBody(lastTickets);
+            
+            // Update the dropdown button label
+            const dropdownBtn = document.getElementById(`dropdown-btn-${field}`);
+            if (dropdownBtn) {
+                dropdownBtn.innerHTML = `${dropdownLabel(field)} <span class="caret">▾</span>`;
+            }
+            
+            // Uncheck all checkboxes in the dropdown
+            const dropdown = document.getElementById(`dropdown-${field}`);
+            if (dropdown) {
+                const checkboxes = dropdown.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+            }
         }
 
         function dropdownLabel(field) {
@@ -848,16 +1011,179 @@
             return visibleCount === total ? 'Columns (All)' : `Columns (${visibleCount}/${total})`;
         }
 
+        function updateTableHeaderAndBody(tickets) {
+            const container = document.getElementById('ticketsContainer');
+            const table = container.querySelector('.tickets-table');
+            if (!table) {
+                renderTickets(tickets);
+                return;
+            }
+            
+            // Save dropdown state
+            const wasOpen = openDropdown === 'columns';
+            const dropdown = document.getElementById('dropdown-columns');
+            
+            const visibleColumns = columns.filter(c => columnVisibility[c.id]);
+            
+            // Update header row
+            const thead = table.querySelector('thead');
+            if (thead) {
+                const headerRow = thead.querySelector('tr:first-child');
+                if (headerRow) {
+                    const headerCells = visibleColumns.map(col => {
+                        const sortableAttrs = col.sortable
+                            ? `class="sortable ${col.className || ''} ${sortField === col.id ? 'sorted' : ''}" onclick="setSort('${col.id}')"`
+                            : `${col.className ? `class="${col.className}"` : ''}`;
+                        const indicator = col.sortable ? `<span class="sort-indicator">${sortIndicator(col.id)}</span>` : '';
+                        return `
+                            <th ${sortableAttrs}>
+                                ${col.label} ${indicator}
+                            </th>
+                        `;
+                    }).join('');
+                    headerRow.innerHTML = headerCells;
+                }
+                
+                // Update filter row
+                const filterRow = thead.querySelector('tr:last-child');
+                if (filterRow) {
+                    const statusOptions = getUniqueValues(tickets, 'status');
+                    const assigneeOptions = getUniqueValues(tickets, 'assignee');
+                    const priorityOptions = getUniqueValues(tickets, 'priority');
+                    
+                    const optionHtml = (opts, selected, field) => opts.map(opt => {
+                        const isSel = selected.includes(opt.toLowerCase());
+                        const safe = opt.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        return `
+                            <label>
+                                <input type="checkbox" ${isSel ? 'checked' : ''} onchange="toggleMultiOption('${field}', '${safe}', this.checked, event)">
+                                ${safe}
+                            </label>
+                        `;
+                    }).join('');
+                    
+                    const filterCells = visibleColumns.map(col => {
+                        if (col.id === 'serial') {
+                            return `<th class="serial-col">#</th>`;
+                        }
+                        if (col.id === 'key') {
+                            return `<th><input type="text" placeholder="Search key" oninput="setFilter('key', this.value, event)" onclick="event.stopPropagation();" value="${filters.key || ''}"></th>`;
+                        }
+                        if (col.id === 'summary') {
+                            return `<th><input type="text" placeholder="Search summary" oninput="setFilter('summary', this.value, event)" onclick="event.stopPropagation();" value="${filters.summary || ''}"></th>`;
+                        }
+                        if (col.id === 'status') {
+                            return `
+                                <th>
+                                    <div class="multi-dd" onclick="event.stopPropagation();">
+                                        <button class="multi-dd-btn" id="dropdown-btn-status" type="button" onclick="toggleDropdown('status', event)">
+                                            ${dropdownLabel('status')} <span class="caret">▾</span>
+                                        </button>
+                                        <div class="multi-dd-options" id="dropdown-status">
+                                            ${optionHtml(statusOptions, filters.statusValues, 'status')}
+                                            <button class="dd-clear" type="button" onclick="clearMultiFilter('status', event)">Clear</button>
+                                        </div>
+                                    </div>
+                                </th>
+                            `;
+                        }
+                        if (col.id === 'assignee') {
+                            return `
+                                <th>
+                                    <div class="multi-dd" onclick="event.stopPropagation();">
+                                        <button class="multi-dd-btn" id="dropdown-btn-assignee" type="button" onclick="toggleDropdown('assignee', event)">
+                                            ${dropdownLabel('assignee')} <span class="caret">▾</span>
+                                        </button>
+                                        <div class="multi-dd-options" id="dropdown-assignee">
+                                            ${optionHtml(assigneeOptions, filters.assigneeValues, 'assignee')}
+                                            <button class="dd-clear" type="button" onclick="clearMultiFilter('assignee', event)">Clear</button>
+                                        </div>
+                                    </div>
+                                </th>
+                            `;
+                        }
+                        if (col.id === 'priority') {
+                            return `
+                                <th>
+                                    <div class="multi-dd" onclick="event.stopPropagation();">
+                                        <button class="multi-dd-btn" id="dropdown-btn-priority" type="button" onclick="toggleDropdown('priority', event)">
+                                            ${dropdownLabel('priority')} <span class="caret">▾</span>
+                                        </button>
+                                        <div class="multi-dd-options" id="dropdown-priority">
+                                            ${optionHtml(priorityOptions, filters.priorityValues, 'priority')}
+                                            <button class="dd-clear" type="button" onclick="clearMultiFilter('priority', event)">Clear</button>
+                                        </div>
+                                    </div>
+                                </th>
+                            `;
+                        }
+                        if (col.id === 'storyPoints') {
+                            return `<th><input type="text" placeholder="Search story points" oninput="setFilter('storyPoints', this.value, event)" onclick="event.stopPropagation();" value="${filters.storyPoints || ''}"></th>`;
+                        }
+                        if (col.id === 'timeOriginalEstimate') {
+                            return `<th><input type="text" placeholder="Search estimate" oninput="setFilter('timeOriginalEstimate', this.value, event)" onclick="event.stopPropagation();" value="${filters.timeOriginalEstimate || ''}"></th>`;
+                        }
+                        if (col.id === 'actualHours') {
+                            return `<th><input type="text" placeholder="Search time spent" oninput="setFilter('actualHours', this.value, event)" onclick="event.stopPropagation();" value="${filters.actualHours || ''}"></th>`;
+                        }
+                        if (col.id === 'timeDifference') {
+                            return `<th><input type="text" placeholder="Search difference" oninput="setFilter('timeDifference', this.value, event)" onclick="event.stopPropagation();" value="${filters.timeDifference || ''}"></th>`;
+                        }
+                        if (col.id === 'created') {
+                            return `<th><input type="text" placeholder="Search created" oninput="setFilter('created', this.value, event)" onclick="event.stopPropagation();" value="${filters.created || ''}"></th>`;
+                        }
+                        if (col.id === 'updated') {
+                            return `<th><input type="text" placeholder="Search updated" oninput="setFilter('updated', this.value, event)" onclick="event.stopPropagation();" value="${filters.updated || ''}"></th>`;
+                        }
+                        if (col.id === 'qaFailedCount') {
+                            return `<th class="qa-col"><input type="text" placeholder="Search QA loop" oninput="setFilter('qaFailedCount', this.value, event)" onclick="event.stopPropagation();" value="${filters.qaFailedCount || ''}"></th>`;
+                        }
+                        if (col.id === 'totalBugs') {
+                            return `<th class="qa-col"><input type="text" placeholder="Search total bugs" oninput="setFilter('totalBugs', this.value, event)" onclick="event.stopPropagation();" value="${filters.totalBugs || ''}"></th>`;
+                        }
+                        if (col.id === 'openBugs') {
+                            return `<th class="qa-col"><input type="text" placeholder="Search open bugs" oninput="setFilter('openBugs', this.value, event)" onclick="event.stopPropagation();" value="${filters.openBugs || ''}"></th>`;
+                        }
+                        return '<th></th>';
+                    }).join('');
+                    filterRow.innerHTML = filterCells;
+                }
+            }
+            
+            // Update body
+            updateTableBody(tickets);
+            
+            // Update column chooser button label
+            const dropdownBtn = document.getElementById('dropdown-btn-columns');
+            if (dropdownBtn) {
+                dropdownBtn.innerHTML = `${columnsDropdownLabel()} <span class="caret">▾</span>`;
+            }
+            
+            // Restore dropdown state
+            if (wasOpen && dropdown) {
+                dropdown.classList.add('open');
+                openDropdown = 'columns';
+            }
+        }
+
         function toggleColumnVisibility(colId, checked, evt) {
             if (evt) evt.stopPropagation();
             columnVisibility[colId] = checked;
-            renderTickets(lastTickets);
+            if (viewMode === 'table') {
+                updateTableHeaderAndBody(lastTickets);
+            } else {
+                renderTickets(lastTickets);
+            }
         }
 
         function resetColumns(evt) {
             if (evt) evt.stopPropagation();
             Object.keys(columnVisibility).forEach(k => columnVisibility[k] = true);
-            renderTickets(lastTickets);
+            if (viewMode === 'table') {
+                updateTableHeaderAndBody(lastTickets);
+            } else {
+                renderTickets(lastTickets);
+            }
         }
 
         function setSort(field) {
@@ -899,6 +1225,25 @@
             window.selectedWorklogDetailAssignee = assignee;
             if (viewMode === 'dashboard') {
                 renderDashboard(lastTickets);
+            }
+        }
+
+        function selectAssigneeForWorklogDetails(assignee, date) {
+            // Set both date and assignee
+            window.selectedWorklogDetailDate = date;
+            window.selectedWorklogDetailAssignee = assignee;
+            
+            // Re-render dashboard to update Worklog Details widget
+            if (viewMode === 'dashboard') {
+                renderDashboard(lastTickets);
+                
+                // Scroll to Worklog Details widget after a short delay to ensure it's rendered
+                setTimeout(() => {
+                    const worklogDetailWidget = document.querySelector('.worklog-detail-widget');
+                    if (worklogDetailWidget) {
+                        worklogDetailWidget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
             }
         }
 
@@ -991,22 +1336,681 @@
         function updateDashboardButton() {
             const btn = document.getElementById('dashboardBtn');
             if (!btn) return;
-            btn.textContent = viewMode === 'dashboard' ? 'Table View' : 'Dashboard';
+            btn.textContent = viewMode === 'dashboard' ? 'AC View' : 'Dashboard';
+        }
+
+        async function copyFRStatusWidget(event) {
+            const widget = document.getElementById('frStatusWidget');
+            if (!widget) {
+                alert('Widget not found');
+                return;
+            }
+
+            const button = event ? (event.target.closest('.snapshot-icon') || event.target) : document.querySelector('#frStatusWidget .snapshot-icon');
+            const svg = button ? button.querySelector('svg') : null;
+            const originalSvg = svg ? svg.outerHTML : null;
+
+            try {
+                // Capture the widget as canvas
+                const canvas = await html2canvas(widget, {
+                    backgroundColor: '#ffffff',
+                    scale: 2, // Higher quality
+                    logging: false
+                });
+
+                // Convert canvas to blob
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        alert('Failed to create image');
+                        return;
+                    }
+
+                    try {
+                        // Copy to clipboard
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': blob
+                            })
+                        ]);
+                        
+                        // Visual feedback - show checkmark
+                        if (svg) {
+                            svg.outerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="fill: #2e7d32;"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>';
+                            setTimeout(() => {
+                                if (originalSvg) {
+                                    svg.outerHTML = originalSvg;
+                                }
+                            }, 2000);
+                        }
+                    } catch (err) {
+                        console.error('Failed to copy to clipboard:', err);
+                        // Fallback: download the image
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'fr-status-widget.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        alert('Image copied! If clipboard didn\'t work, the image was downloaded instead.');
+                    }
+                }, 'image/png');
+            } catch (err) {
+                console.error('Failed to capture widget:', err);
+                alert('Failed to capture widget as image');
+            }
+        }
+
+        async function copyACStatusWidget(event) {
+            const widget = document.getElementById('acStatusWidget');
+            if (!widget) {
+                alert('Widget not found');
+                return;
+            }
+
+            const button = event ? (event.target.closest('.snapshot-icon') || event.target) : document.querySelector('#acStatusWidget .snapshot-icon');
+            const svg = button ? button.querySelector('svg') : null;
+            const originalSvg = svg ? svg.outerHTML : null;
+
+            try {
+                // Capture the widget as canvas
+                const canvas = await html2canvas(widget, {
+                    backgroundColor: '#ffffff',
+                    scale: 2, // Higher quality
+                    logging: false
+                });
+
+                // Convert canvas to blob
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        alert('Failed to create image');
+                        return;
+                    }
+
+                    try {
+                        // Copy to clipboard
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': blob
+                            })
+                        ]);
+                        
+                        // Visual feedback - show checkmark
+                        if (svg) {
+                            svg.outerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="fill: #2e7d32;"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>';
+                            setTimeout(() => {
+                                if (originalSvg) {
+                                    svg.outerHTML = originalSvg;
+                                }
+                            }, 2000);
+                        }
+                    } catch (err) {
+                        console.error('Failed to copy to clipboard:', err);
+                        // Fallback: download the image
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'ac-status-widget.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        alert('Image copied! If clipboard didn\'t work, the image was downloaded instead.');
+                    }
+                }, 'image/png');
+            } catch (err) {
+                console.error('Failed to capture widget:', err);
+                alert('Failed to capture widget as image');
+            }
+        }
+
+        async function copyAssigneeTimeTrackingWidget(event) {
+            const widget = document.getElementById('assigneeTimeTrackingWidget');
+            if (!widget) {
+                alert('Widget not found');
+                return;
+            }
+
+            const button = event ? (event.target.closest('.snapshot-icon') || event.target) : document.querySelector('#assigneeTimeTrackingWidget .snapshot-icon');
+            const svg = button ? button.querySelector('svg') : null;
+            const originalSvg = svg ? svg.outerHTML : null;
+
+            try {
+                // Capture the widget as canvas
+                const canvas = await html2canvas(widget, {
+                    backgroundColor: '#ffffff',
+                    scale: 2, // Higher quality
+                    logging: false
+                });
+
+                // Convert canvas to blob
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        alert('Failed to create image');
+                        return;
+                    }
+
+                    try {
+                        // Copy to clipboard
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': blob
+                            })
+                        ]);
+                        
+                        // Visual feedback - show checkmark
+                        if (svg) {
+                            svg.outerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="fill: #2e7d32;"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>';
+                            setTimeout(() => {
+                                if (originalSvg) {
+                                    svg.outerHTML = originalSvg;
+                                }
+                            }, 2000);
+                        }
+                    } catch (err) {
+                        console.error('Failed to copy to clipboard:', err);
+                        // Fallback: download the image
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'assignee-time-tracking-widget.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        alert('Image copied! If clipboard didn\'t work, the image was downloaded instead.');
+                    }
+                }, 'image/png');
+            } catch (err) {
+                console.error('Failed to capture widget:', err);
+                alert('Failed to capture widget as image');
+            }
+        }
+
+        function toggleFRView() {
+            viewMode = 'fr';
+            renderTickets(lastTickets);
+        }
+
+        function toggleView(newMode) {
+            viewMode = newMode;
+            renderTickets(lastTickets);
+        }
+
+        // Helper function to escape CSV values
+        function escapeCSV(value) {
+            if (value === null || value === undefined) return '';
+            const stringValue = String(value);
+            // If value contains comma, newline, or double quote, wrap in quotes and escape quotes
+            if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
+                return '"' + stringValue.replace(/"/g, '""') + '"';
+            }
+            return stringValue;
+        }
+
+        // Generic function to get cell value based on column and data item
+        function getCellValue(col, item, idx, viewType) {
+            let value = '';
+            if (col.id === 'serial') {
+                value = idx + 1;
+            } else if (viewType === 'fr') {
+                // FR view specific columns
+                if (col.id === 'frId') {
+                    value = item.frId || 'N/A';
+                } else if (col.id === 'totalTickets') {
+                    value = item.totalTickets || 0;
+                } else if (col.id === 'doneTickets') {
+                    value = item.doneTickets || 0;
+                } else if (col.id === 'pendingTickets') {
+                    value = item.pendingTickets || 0;
+                } else if (col.id === 'frStatus') {
+                    value = item.frStatus || 'N/A';
+                }
+            } else {
+                // AC/Table view columns
+                if (col.id === 'key') {
+                    value = item.key || 'N/A';
+                } else if (col.id === 'summary') {
+                    value = item.summary || item.title || 'No title';
+                } else if (col.id === 'status') {
+                    value = item.status || 'Unknown';
+                } else if (col.id === 'assignee') {
+                    value = item.assignee || '';
+                } else if (col.id === 'priority') {
+                    value = item.priority || '';
+                } else if (col.id === 'storyPoints') {
+                    value = typeof item.storyPoints === 'number' ? item.storyPoints : '';
+                } else if (col.id === 'timeOriginalEstimate') {
+                    value = formatTimeFromSeconds(item.timeOriginalEstimate || 0);
+                } else if (col.id === 'actualHours') {
+                    value = formatTimeFromSeconds(item.actualHours || 0);
+                } else if (col.id === 'timeDifference') {
+                    const estimateSeconds = typeof item.timeOriginalEstimate === 'number' ? item.timeOriginalEstimate : 0;
+                    const actualSeconds = typeof item.actualHours === 'number' ? item.actualHours : 0;
+                    const diffSeconds = actualSeconds - estimateSeconds;
+                    if (diffSeconds === 0) {
+                        value = '';
+                    } else {
+                        const absDiff = Math.abs(diffSeconds);
+                        const formatted = formatTimeFromSeconds(absDiff);
+                        value = (diffSeconds > 0 ? '+' : '-') + formatted;
+                    }
+                } else if (col.id === 'created') {
+                    value = item.created ? formatDate(item.created) : '';
+                } else if (col.id === 'updated') {
+                    value = item.updated ? formatDate(item.updated) : '';
+                } else if (col.id === 'qaFailedCount') {
+                    value = typeof item.qaFailedCount === 'number' ? item.qaFailedCount : '';
+                } else if (col.id === 'totalBugs') {
+                    value = typeof item.totalBugs === 'number' ? item.totalBugs : '';
+                } else if (col.id === 'openBugs') {
+                    value = typeof item.openBugs === 'number' ? item.openBugs : '';
+                }
+            }
+            return value;
+        }
+
+        // Helper function to generate filter action buttons based on current view
+        function getFilterActionsButtons(columnChooser = '') {
+            let buttons = [];
+            
+            // Export button (available in table and FR views)
+            if (viewMode === 'table' || viewMode === 'fr') {
+                buttons.push(`<button class="clear-btn" type="button" onclick="exportToCSV()" title="Export to CSV">Export</button>`);
+            }
+            
+            // Column chooser (available in table and FR views)
+            if (columnChooser && (viewMode === 'table' || viewMode === 'fr')) {
+                buttons.push(columnChooser);
+            }
+            
+            // View toggle buttons based on current view
+            if (viewMode === 'dashboard') {
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('table')">AC View</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('fr')">FR View</button>`);
+            } else if (viewMode === 'fr') {
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('table')">AC View</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('dashboard')">Dashboard</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="clearFRFilters()">Clear filters</button>`);
+            } else if (viewMode === 'table') {
+                buttons.push(`<button class="clear-btn" type="button" id="dashboardBtn" onclick="toggleDashboard()">Dashboard</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('fr')">FR View</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="clearFilters()">Clear filters</button>`);
+            }
+            
+            return buttons.join('\n                        ');
+        }
+
+        // Unified export function for all views
+        function exportToCSV() {
+            let data = [];
+            let visibleColumns = [];
+            let viewType = '';
+            let filenamePrefix = '';
+
+            // Determine view type and prepare data
+            if (viewMode === 'fr') {
+                const frData = aggregateFRData(lastTickets);
+                data = applyFRFiltersAndSort(frData);
+                visibleColumns = frColumns.filter(c => frColumnVisibility[c.id]);
+                viewType = 'fr';
+                filenamePrefix = 'fr-view';
+            } else {
+                // AC/Table view
+                data = applyFiltersAndSort(lastTickets);
+                visibleColumns = columns.filter(c => columnVisibility[c.id]);
+                viewType = 'table';
+                filenamePrefix = 'ac-view';
+            }
+
+            // Build CSV header
+            const headers = visibleColumns.map(col => escapeCSV(col.label));
+            const csvRows = [headers.join(',')];
+
+            // Build CSV rows
+            data.forEach((item, idx) => {
+                const row = [];
+                visibleColumns.forEach(col => {
+                    const value = getCellValue(col, item, idx, viewType);
+                    row.push(escapeCSV(value));
+                });
+                csvRows.push(row.join(','));
+            });
+
+            // Create and download CSV
+            const csvContent = csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filenamePrefix}-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // FR View columns
+        const frColumns = [
+            { id: 'serial', label: '#', sortable: null, className: 'serial-col' },
+            { id: 'frId', label: 'FR ID', sortable: 'frId' },
+            { id: 'totalTickets', label: 'Total Tickets', sortable: 'totalTickets' },
+            { id: 'doneTickets', label: 'Done Tickets', sortable: 'doneTickets' },
+            { id: 'pendingTickets', label: 'Pending Tickets', sortable: 'pendingTickets' },
+            { id: 'frStatus', label: 'Status', sortable: 'frStatus' },
+        ];
+
+        const frColumnVisibility = {
+            serial: true,
+            frId: true,
+            totalTickets: true,
+            doneTickets: true,
+            pendingTickets: true,
+            frStatus: true
+        };
+
+        const frFilters = {
+            frId: '',
+            totalTickets: '',
+            doneTickets: '',
+            pendingTickets: '',
+            frStatusValues: []
+        };
+
+        function getDefaultFRFilters() {
+            return {
+                frId: '',
+                totalTickets: '',
+                doneTickets: '',
+                pendingTickets: '',
+                frStatusValues: []
+            };
+        }
+
+        // Aggregate FR data from tickets
+        function aggregateFRData(tickets) {
+            const frMap = {};
+            
+            tickets.forEach(ticket => {
+                if (!ticket.frId) return;
+                
+                if (!frMap[ticket.frId]) {
+                    frMap[ticket.frId] = {
+                        frId: ticket.frId,
+                        totalTickets: 0,
+                        doneTickets: 0,
+                        pendingTickets: 0,
+                        frStatus: ''
+                    };
+                }
+                
+                frMap[ticket.frId].totalTickets++;
+                
+                if (ticket.statusCategory === 'Done') {
+                    frMap[ticket.frId].doneTickets++;
+                }
+            });
+            
+            // Calculate pending and status for each FR
+            Object.values(frMap).forEach(fr => {
+                fr.pendingTickets = fr.totalTickets - fr.doneTickets;
+                
+                if (fr.doneTickets === 0) {
+                    fr.frStatus = 'Pending';
+                } else if (fr.doneTickets === fr.totalTickets) {
+                    fr.frStatus = 'Done';
+                } else {
+                    fr.frStatus = 'Partially Done';
+                }
+            });
+            
+            return Object.values(frMap);
+        }
+
+        function applyFRFiltersAndSort(frData) {
+            const filtered = frData.filter(fr => {
+                const frId = (fr.frId || '').toLowerCase().includes(frFilters.frId.toLowerCase());
+                const totalTickets = String(fr.totalTickets || 0).toLowerCase().includes(frFilters.totalTickets.toLowerCase());
+                const doneTickets = String(fr.doneTickets || 0).toLowerCase().includes(frFilters.doneTickets.toLowerCase());
+                const pendingTickets = String(fr.pendingTickets || 0).toLowerCase().includes(frFilters.pendingTickets.toLowerCase());
+                
+                const statusValue = (fr.frStatus || '').toLowerCase();
+                const status = frFilters.frStatusValues.length === 0 || frFilters.frStatusValues.includes(statusValue);
+                
+                return frId && totalTickets && doneTickets && pendingTickets && status;
+            });
+
+            if (!sortField) return filtered;
+
+            const dir = sortDir === 'asc' ? 1 : -1;
+            return filtered.slice().sort((a, b) => {
+                // Handle numeric fields
+                if (sortField === 'totalTickets' || sortField === 'doneTickets' || sortField === 'pendingTickets') {
+                    const va = typeof a[sortField] === 'number' ? a[sortField] : 0;
+                    const vb = typeof b[sortField] === 'number' ? b[sortField] : 0;
+                    return (va - vb) * dir;
+                }
+                // Handle string fields
+                const va = (a[sortField] ?? '').toString().toLowerCase();
+                const vb = (b[sortField] ?? '').toString().toLowerCase();
+                if (va < vb) return -1 * dir;
+                if (va > vb) return 1 * dir;
+                return 0;
+            });
+        }
+
+        function setFRFilter(field, value, evt) {
+            if (evt) evt.stopPropagation();
+            frFilters[field] = value.toLowerCase();
+            if (viewMode === 'fr') {
+                updateFRTableBody(lastTickets);
+            }
+        }
+
+        function toggleFRMultiOption(field, value, checked, evt) {
+            if (evt) evt.stopPropagation();
+            const key = `${field}Values`;
+            const arr = frFilters[key] || [];
+            const norm = value.toLowerCase();
+            const exists = arr.includes(norm);
+            if (checked && !exists) {
+                arr.push(norm);
+                frFilters[key] = arr;
+            } else if (!checked && exists) {
+                frFilters[key] = arr.filter(v => v !== norm);
+            }
+            if (viewMode === 'fr') {
+                updateFRTableBody(lastTickets);
+            }
+            
+            // Update the dropdown button label
+            const dropdownBtn = document.getElementById(`dropdown-btn-${field}`);
+            if (dropdownBtn) {
+                dropdownBtn.innerHTML = `${frDropdownLabel(field)} <span class="caret">▾</span>`;
+            }
+        }
+
+        function clearFRMultiFilter(field, evt) {
+            if (evt) evt.stopPropagation();
+            frFilters[`${field}Values`] = [];
+            if (viewMode === 'fr') {
+                updateFRTableBody(lastTickets);
+            }
+            
+            // Update the dropdown button label
+            const dropdownBtn = document.getElementById(`dropdown-btn-${field}`);
+            if (dropdownBtn) {
+                dropdownBtn.innerHTML = `${frDropdownLabel(field)} <span class="caret">▾</span>`;
+            }
+            
+            // Uncheck all checkboxes in the dropdown
+            const dropdown = document.getElementById(`dropdown-${field}`);
+            if (dropdown) {
+                const checkboxes = dropdown.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+            }
+        }
+
+        function frDropdownLabel(field) {
+            const arr = frFilters[`${field}Values`] || [];
+            if (arr.length === 0) return 'All';
+            if (arr.length === 1) return arr[0];
+            return `${arr.length} selected`;
+        }
+
+        function frColumnsDropdownLabel() {
+            const visibleCount = Object.values(frColumnVisibility).filter(Boolean).length;
+            const total = frColumns.length;
+            return visibleCount === total ? 'Columns (All)' : `Columns (${visibleCount}/${total})`;
+        }
+
+        function updateFRTableHeaderAndBody(tickets) {
+            const container = document.getElementById('ticketsContainer');
+            const table = container.querySelector('.tickets-table');
+            if (!table) {
+                renderFRView(tickets);
+                return;
+            }
+            
+            // Save dropdown state
+            const wasOpen = openDropdown === 'frColumns';
+            const dropdown = document.getElementById('dropdown-frColumns');
+            
+            const visibleColumns = frColumns.filter(c => frColumnVisibility[c.id]);
+            
+            // Update header row
+            const thead = table.querySelector('thead');
+            if (thead) {
+                const headerRow = thead.querySelector('tr:first-child');
+                if (headerRow) {
+                    const headerCells = visibleColumns.map(col => {
+                        const sortableAttrs = col.sortable
+                            ? `class="sortable ${col.className || ''} ${sortField === col.id ? 'sorted' : ''}" onclick="setFRSort('${col.id}')"`
+                            : `${col.className ? `class="${col.className}"` : ''}`;
+                        const indicator = col.sortable ? `<span class="sort-indicator">${frSortIndicator(col.id)}</span>` : '';
+                        return `
+                            <th ${sortableAttrs}>
+                                ${col.label} ${indicator}
+                            </th>
+                        `;
+                    }).join('');
+                    headerRow.innerHTML = headerCells;
+                }
+                
+                // Update filter row
+                const filterRow = thead.querySelector('tr:last-child');
+                if (filterRow) {
+                    const statusOptions = ['Done', 'Pending', 'Partially Done'];
+                    
+                    const optionHtml = (opts, selected, field) => opts.map(opt => {
+                        const isSel = selected.includes(opt.toLowerCase());
+                        const safe = opt.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        return `
+                            <label>
+                                <input type="checkbox" ${isSel ? 'checked' : ''} onchange="toggleFRMultiOption('${field}', '${safe}', this.checked, event)">
+                                ${safe}
+                            </label>
+                        `;
+                    }).join('');
+                    
+                    const filterCells = visibleColumns.map(col => {
+                        if (col.id === 'serial') {
+                            return `<th class="serial-col">#</th>`;
+                        }
+                        if (col.id === 'frId') {
+                            return `<th><input type="text" placeholder="Search FR ID" oninput="setFRFilter('frId', this.value, event)" onclick="event.stopPropagation();" value="${frFilters.frId || ''}"></th>`;
+                        }
+                        if (col.id === 'totalTickets') {
+                            return `<th><input type="text" placeholder="Search total" oninput="setFRFilter('totalTickets', this.value, event)" onclick="event.stopPropagation();" value="${frFilters.totalTickets || ''}"></th>`;
+                        }
+                        if (col.id === 'doneTickets') {
+                            return `<th><input type="text" placeholder="Search done" oninput="setFRFilter('doneTickets', this.value, event)" onclick="event.stopPropagation();" value="${frFilters.doneTickets || ''}"></th>`;
+                        }
+                        if (col.id === 'pendingTickets') {
+                            return `<th><input type="text" placeholder="Search pending" oninput="setFRFilter('pendingTickets', this.value, event)" onclick="event.stopPropagation();" value="${frFilters.pendingTickets || ''}"></th>`;
+                        }
+                        if (col.id === 'frStatus') {
+                            return `
+                                <th>
+                                    <div class="multi-dd" onclick="event.stopPropagation();">
+                                        <button class="multi-dd-btn" id="dropdown-btn-frStatus" type="button" onclick="toggleDropdown('frStatus', event)">
+                                            ${frDropdownLabel('frStatus')} <span class="caret">▾</span>
+                                        </button>
+                                        <div class="multi-dd-options" id="dropdown-frStatus">
+                                            ${optionHtml(statusOptions, frFilters.frStatusValues, 'frStatus')}
+                                            <button class="dd-clear" type="button" onclick="clearFRMultiFilter('frStatus', event)">Clear</button>
+                                        </div>
+                                    </div>
+                                </th>
+                            `;
+                        }
+                        return '<th></th>';
+                    }).join('');
+                    filterRow.innerHTML = filterCells;
+                }
+            }
+            
+            // Update body
+            updateFRTableBody(tickets);
+            
+            // Update column chooser button label
+            const dropdownBtn = document.getElementById('dropdown-btn-frColumns');
+            if (dropdownBtn) {
+                dropdownBtn.innerHTML = `${frColumnsDropdownLabel()} <span class="caret">▾</span>`;
+            }
+            
+            // Restore dropdown state
+            if (wasOpen && dropdown) {
+                dropdown.classList.add('open');
+                openDropdown = 'frColumns';
+            }
+        }
+
+        function toggleFRColumnVisibility(colId, checked, evt) {
+            if (evt) evt.stopPropagation();
+            frColumnVisibility[colId] = checked;
+            if (viewMode === 'fr') {
+                updateFRTableHeaderAndBody(lastTickets);
+            }
+        }
+
+        function resetFRColumns(evt) {
+            if (evt) evt.stopPropagation();
+            Object.keys(frColumnVisibility).forEach(k => frColumnVisibility[k] = true);
+            if (viewMode === 'fr') {
+                updateFRTableHeaderAndBody(lastTickets);
+            }
+        }
+
+        function setFRSort(field) {
+            if (sortField === field) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortField = field;
+                sortDir = 'asc';
+            }
+            if (viewMode === 'fr') {
+                renderFRView(lastTickets);
+            }
+        }
+
+        function frSortIndicator(field) {
+            if (sortField !== field) return '⇅';
+            return sortDir === 'asc' ? '▲' : '▼';
+        }
+
+        function clearFRFilters() {
+            Object.assign(frFilters, getDefaultFRFilters());
+            if (viewMode === 'fr') {
+                renderFRView(lastTickets);
+            }
         }
 
         function clearFilters() {
-            filters.key = '';
-            filters.summary = '';
-            filters.statusValues = [];
-            filters.assigneeValues = [];
-            filters.priorityValues = [];
-            filters.storyPoints = '';
-            filters.timeOriginalEstimate = '';
-            filters.actualHours = '';
-            filters.timeDifference = '';
-            filters.created = '';
-            filters.updated = '';
-            filters.qaFailedCount = '';
+            Object.assign(filters, getDefaultFilters());
             renderTickets(lastTickets);
         }
 
@@ -1045,15 +2049,17 @@
                 const created = (t.created || '').toLowerCase().includes(filters.created);
                 const updated = (t.updated || '').toLowerCase().includes(filters.updated);
                 const qaFailed = String(typeof t.qaFailedCount === 'number' ? t.qaFailedCount : '').toLowerCase().includes(filters.qaFailedCount);
-                return key && summary && status && assignee && priority && storyPoints && timeEstimate && actualHrs && timeDiff && created && updated && qaFailed;
+                const totalBugs = String(typeof t.totalBugs === 'number' ? t.totalBugs : '').toLowerCase().includes(filters.totalBugs);
+                const openBugs = String(typeof t.openBugs === 'number' ? t.openBugs : '').toLowerCase().includes(filters.openBugs);
+                return key && summary && status && assignee && priority && storyPoints && timeEstimate && actualHrs && timeDiff && created && updated && qaFailed && totalBugs && openBugs;
             });
 
             if (!sortField) return filtered;
 
             const dir = sortDir === 'asc' ? 1 : -1;
             return filtered.slice().sort((a, b) => {
-                // Handle numeric fields (storyPoints, qaFailedCount, timeOriginalEstimate, actualHours, timeDifference)
-                if (sortField === 'storyPoints' || sortField === 'qaFailedCount' || sortField === 'timeOriginalEstimate' || sortField === 'actualHours' || sortField === 'timeDifference') {
+                // Handle numeric fields (storyPoints, qaFailedCount, timeOriginalEstimate, actualHours, timeDifference, totalBugs, openBugs)
+                if (sortField === 'storyPoints' || sortField === 'qaFailedCount' || sortField === 'timeOriginalEstimate' || sortField === 'actualHours' || sortField === 'timeDifference' || sortField === 'totalBugs' || sortField === 'openBugs') {
                     let va, vb;
                     if (sortField === 'timeDifference') {
                         // Calculate difference for sorting
@@ -1099,7 +2105,43 @@
                 if (columnVisibility.created) cells.push(`<td>${ticket.created ? formatDate(ticket.created) : ''}</td>`);
                 if (columnVisibility.updated) cells.push(`<td>${ticket.updated ? formatDate(ticket.updated) : ''}</td>`);
                 if (columnVisibility.qaFailedCount) cells.push(`<td>${typeof ticket.qaFailedCount === 'number' ? ticket.qaFailedCount : ''}</td>`);
+                if (columnVisibility.totalBugs) cells.push(`<td>${typeof ticket.totalBugs === 'number' ? ticket.totalBugs : ''}</td>`);
+                if (columnVisibility.openBugs) cells.push(`<td>${typeof ticket.openBugs === 'number' ? ticket.openBugs : ''}</td>`);
                 return `<tr onclick="window.open('${ticket.url || '#'}', '_blank')" style="cursor:pointer;">${cells.join('')}</tr>`;
+            }).join('');
+        }
+
+        function updateFRTableBody(tickets) {
+            const container = document.getElementById('ticketsContainer');
+            const table = container.querySelector('.tickets-table');
+            if (!table) {
+                renderFRView(tickets);
+                return;
+            }
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            
+            const frData = aggregateFRData(tickets || []);
+            const filteredAndSorted = applyFRFiltersAndSort(frData);
+            
+            tbody.innerHTML = filteredAndSorted.map((fr, idx) => {
+                const cells = [];
+                if (frColumnVisibility.serial) cells.push(`<td class="serial-col">${idx + 1}</td>`);
+                if (frColumnVisibility.frId) cells.push(`<td>${fr.frId || 'N/A'}</td>`);
+                if (frColumnVisibility.totalTickets) cells.push(`<td>${fr.totalTickets || 0}</td>`);
+                if (frColumnVisibility.doneTickets) cells.push(`<td>${fr.doneTickets || 0}</td>`);
+                if (frColumnVisibility.pendingTickets) cells.push(`<td>${fr.pendingTickets || 0}</td>`);
+                if (frColumnVisibility.frStatus) cells.push(`<td>${fr.frStatus || 'N/A'}</td>`);
+                // Construct Jira URL with FR ID - only make clickable if FR ID exists
+                const frId = fr.frId || '';
+                let rowAttrs = '';
+                if (frId && frId !== 'N/A') {
+                    const jqlQuery = `cf[10049] = "${frId}"`;
+                    const encodedJql = encodeURIComponent(jqlQuery);
+                    const jiraUrl = `https://cardyai-hawaii.atlassian.net/issues/?jql=${encodedJql}`;
+                    rowAttrs = `onclick="window.open('${jiraUrl}', '_blank')" style="cursor:pointer;"`;
+                }
+                return `<tr ${rowAttrs}>${cells.join('')}</tr>`;
             }).join('');
         }
 
@@ -1458,20 +2500,54 @@
                     const formatted = formatTimeHoursMinutes(totalSeconds);
                     // Apply red color if less than 8 hours
                     const timeClass = totalSeconds < EIGHT_HOURS_IN_SECONDS ? 'time-low-hours' : '';
-                    return `<li><span>${assignee}</span><span class="${timeClass}">${formatted}</span></li>`;
+                    // Escape assignee for use in onclick
+                    const safeAssignee = assignee.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    return `<li class="clickable" onclick="selectAssigneeForWorklogDetails('${safeAssignee}', '${selectedDate}')"><span>${assignee}</span><span class="${timeClass}">${formatted}</span></li>`;
                 })
                 .join('');
             
             const totalTimeSpent = Object.values(allAssigneesMap).reduce((sum, seconds) => sum + seconds, 0);
             const totalFormatted = formatTimeHoursMinutes(totalTimeSpent);
 
+            // Calculate FR Status counts - dynamically from available FR data
+            const frData = aggregateFRData(tickets);
+            const frStatusCounts = {};
+            frData.forEach(fr => {
+                const status = fr.frStatus || 'Pending';
+                frStatusCounts[status] = (frStatusCounts[status] || 0) + 1;
+            });
+            const totalFRs = frData.length;
+            // Sort statuses: Done first, then Partially Done, then Pending, then others alphabetically
+            const statusOrder = ['Done', 'Partially Done', 'Pending'];
+            const sortedStatuses = Object.entries(frStatusCounts).sort((a, b) => {
+                const indexA = statusOrder.indexOf(a[0]);
+                const indexB = statusOrder.indexOf(b[0]);
+                if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                if (indexA !== -1) return -1;
+                if (indexB !== -1) return 1;
+                return a[0].localeCompare(b[0]);
+            });
+            const frStatusList = sortedStatuses
+                .map(([status, count]) => {
+                    const percentage = totalFRs > 0 ? ((count / totalFRs) * 100).toFixed(1) : '0.0';
+                    return `<li><span>${status}</span><span>${count} (${percentage}%)</span></li>`;
+                })
+                .join('');
+
             container.innerHTML = `
                 <div class="filter-actions">
-                    <button class="clear-btn" type="button" onclick="toggleDashboard()">Table View</button>
+                    ${getFilterActionsButtons()}
                 </div>
                 <div class="dash-grid">
-                    <div class="dash-card">
-                        <h3>Status</h3>
+                    <div class="dash-card" id="acStatusWidget">
+                        <div class="widget-header">
+                            <h3>AC Status</h3>
+                            <button class="snapshot-icon" onclick="copyACStatusWidget(event)" title="Copy widget as image">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.5-10.5h-1.5l-1-1h-4l-1 1H9.5l-1 1H5c-1.11 0-2 .89-2 2v10c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
+                                </svg>
+                            </button>
+                        </div>
                         ${statusSections || '<div class="dash-section"><div class="dash-section-title">Other</div><ul class="dash-list"><li><span>None</span><span>0 (0.0%)</span></li></ul></div>'}
                     </div>
                     <div class="dash-card">
@@ -1486,8 +2562,28 @@
                             ${qaFailedList || '<li><span>0</span><span>0 tickets (0.0%)</span></li>'}
                         </ul>
                     </div>
-                    <div class="dash-card time-tracking-widget">
-                        <h3>Assignee Time Tracking</h3>
+                    <div class="dash-card" id="frStatusWidget">
+                        <div class="widget-header">
+                            <h3>FR Status</h3>
+                            <button class="snapshot-icon" onclick="copyFRStatusWidget(event)" title="Copy widget as image">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.5-10.5h-1.5l-1-1h-4l-1 1H9.5l-1 1H5c-1.11 0-2 .89-2 2v10c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <ul class="dash-list">
+                            ${frStatusList || '<li><span>No FRs</span><span>0 (0.0%)</span></li>'}
+                        </ul>
+                    </div>
+                    <div class="dash-card time-tracking-widget" id="assigneeTimeTrackingWidget">
+                        <div class="widget-header">
+                            <h3>Assignee Time Tracking</h3>
+                            <button class="snapshot-icon" onclick="copyAssigneeTimeTrackingWidget(event)" title="Copy widget as image">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.5-10.5h-1.5l-1-1h-4l-1 1H9.5l-1 1H5c-1.11 0-2 .89-2 2v10c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
+                                </svg>
+                            </button>
+                        </div>
                         <div class="date-picker-container">
                             <label class="date-picker-label" for="worklogDatePicker">Date:</label>
                             <input type="date" id="worklogDatePicker" class="date-picker-input" value="${selectedDate}" onchange="updateWorklogDate(this.value)">
@@ -1504,6 +2600,151 @@
                     </div>
                     ${renderWorklogDetailWidget(tickets)}
                 </div>
+            `;
+        }
+
+        function renderFRView(tickets) {
+            const container = document.getElementById('ticketsContainer');
+            if (!tickets || tickets.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h2>No tickets found</h2>
+                        <p>No Jira tickets were returned from the API</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const frData = aggregateFRData(tickets);
+            
+            if (frData.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h2>No FR data found</h2>
+                        <p>No tickets have FR IDs assigned</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Get unique status values for filter
+            const statusOptions = ['Done', 'Pending', 'Partially Done'];
+
+            const optionHtml = (opts, selected, field) => opts.map(opt => {
+                const isSel = selected.includes(opt.toLowerCase());
+                const safe = opt.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                return `
+                    <label>
+                        <input type="checkbox" ${isSel ? 'checked' : ''} onchange="toggleFRMultiOption('${field}', '${safe}', this.checked, event)">
+                        ${safe}
+                    </label>
+                `;
+            }).join('');
+
+            const visibleColumns = frColumns.filter(c => frColumnVisibility[c.id]);
+
+            const headerCells = visibleColumns.map(col => {
+                const sortableAttrs = col.sortable
+                    ? `class="sortable ${col.className || ''} ${sortField === col.id ? 'sorted' : ''}" onclick="setFRSort('${col.id}')"`
+                    : `${col.className ? `class="${col.className}"` : ''}`;
+                const indicator = col.sortable ? `<span class="sort-indicator">${frSortIndicator(col.id)}</span>` : '';
+                return `
+                    <th ${sortableAttrs}>
+                        ${col.label} ${indicator}
+                    </th>
+                `;
+            }).join('');
+
+            const filterRow = `
+                <tr>
+                    ${visibleColumns.map(col => {
+                        if (col.id === 'serial') {
+                            return `<th class="serial-col">#</th>`;
+                        }
+                        if (col.id === 'frId') {
+                            return `<th><input type="text" placeholder="Search FR ID" oninput="setFRFilter('frId', this.value, event)" onclick="event.stopPropagation();" value="${frFilters.frId || ''}"></th>`;
+                        }
+                        if (col.id === 'totalTickets') {
+                            return `<th><input type="text" placeholder="Search total" oninput="setFRFilter('totalTickets', this.value, event)" onclick="event.stopPropagation();" value="${frFilters.totalTickets || ''}"></th>`;
+                        }
+                        if (col.id === 'doneTickets') {
+                            return `<th><input type="text" placeholder="Search done" oninput="setFRFilter('doneTickets', this.value, event)" onclick="event.stopPropagation();" value="${frFilters.doneTickets || ''}"></th>`;
+                        }
+                        if (col.id === 'pendingTickets') {
+                            return `<th><input type="text" placeholder="Search pending" oninput="setFRFilter('pendingTickets', this.value, event)" onclick="event.stopPropagation();" value="${frFilters.pendingTickets || ''}"></th>`;
+                        }
+                        if (col.id === 'frStatus') {
+                            return `
+                                <th>
+                                    <div class="multi-dd" onclick="event.stopPropagation();">
+                                        <button class="multi-dd-btn" id="dropdown-btn-frStatus" type="button" onclick="toggleDropdown('frStatus', event)">
+                                            ${frDropdownLabel('frStatus')} <span class="caret">▾</span>
+                                        </button>
+                                        <div class="multi-dd-options" id="dropdown-frStatus">
+                                            ${optionHtml(statusOptions, frFilters.frStatusValues, 'frStatus')}
+                                            <button class="dd-clear" type="button" onclick="clearFRMultiFilter('frStatus', event)">Clear</button>
+                                        </div>
+                                    </div>
+                                </th>
+                            `;
+                        }
+                        return '<th></th>';
+                    }).join('')}
+                </tr>
+            `;
+
+            const columnChooser = `
+                <div class="multi-dd" onclick="event.stopPropagation();">
+                    <button class="multi-dd-btn" id="dropdown-btn-frColumns" type="button" onclick="toggleDropdown('frColumns', event)">
+                        ${frColumnsDropdownLabel()} <span class="caret">▾</span>
+                    </button>
+                    <div class="multi-dd-options" id="dropdown-frColumns">
+                        ${frColumns.map(col => `
+                            <label>
+                                <input type="checkbox" ${frColumnVisibility[col.id] ? 'checked' : ''} onchange="toggleFRColumnVisibility('${col.id}', this.checked, event)">
+                                ${col.label}
+                            </label>
+                        `).join('')}
+                        <button class="dd-clear" type="button" onclick="resetFRColumns(event)">Show all</button>
+                    </div>
+                </div>
+            `;
+
+            const filteredAndSorted = applyFRFiltersAndSort(frData);
+            
+            container.innerHTML = `
+                <div class="filter-actions">
+                    ${getFilterActionsButtons(columnChooser)}
+                </div>
+                <table class="tickets-table">
+                    <thead>
+                        <tr>
+                            ${headerCells}
+                        </tr>
+                        ${filterRow}
+                    </thead>
+                    <tbody>
+                        ${filteredAndSorted.map((fr, idx) => {
+                            const cells = [];
+                            if (frColumnVisibility.serial) cells.push(`<td class="serial-col">${idx + 1}</td>`);
+                            if (frColumnVisibility.frId) cells.push(`<td>${fr.frId || 'N/A'}</td>`);
+                            if (frColumnVisibility.totalTickets) cells.push(`<td>${fr.totalTickets || 0}</td>`);
+                            if (frColumnVisibility.doneTickets) cells.push(`<td>${fr.doneTickets || 0}</td>`);
+                            if (frColumnVisibility.pendingTickets) cells.push(`<td>${fr.pendingTickets || 0}</td>`);
+                            if (frColumnVisibility.frStatus) cells.push(`<td>${fr.frStatus || 'N/A'}</td>`);
+                            // Construct Jira URL with FR ID - only make clickable if FR ID exists
+                            const frId = fr.frId || '';
+                            let rowAttrs = '';
+                            if (frId && frId !== 'N/A') {
+                                const jqlQuery = `cf[10049] = "${frId}"`;
+                                const encodedJql = encodeURIComponent(jqlQuery);
+                                const jiraUrl = `https://cardyai-hawaii.atlassian.net/issues/?jql=${encodedJql}`;
+                                rowAttrs = `onclick="window.open('${jiraUrl}', '_blank')" style="cursor:pointer;"`;
+                            }
+                            return `<tr ${rowAttrs}>${cells.join('')}</tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
             `;
         }
 
@@ -1524,6 +2765,11 @@
 
             if (viewMode === 'dashboard') {
                 renderDashboard(tickets);
+                return;
+            }
+
+            if (viewMode === 'fr') {
+                renderFRView(tickets);
                 return;
             }
 
@@ -1580,7 +2826,7 @@
                                             </button>
                                             <div class="multi-dd-options" id="dropdown-status">
                                                 ${optionHtml(statusOptions, filters.statusValues, 'status')}
-                                                <button class="dd-clear" type="button" onclick="filters.statusValues=[]; renderTickets(lastTickets); event.stopPropagation();">Clear</button>
+                                                <button class="dd-clear" type="button" onclick="clearMultiFilter('status', event)">Clear</button>
                                             </div>
                                         </div>
                                     </th>
@@ -1595,7 +2841,7 @@
                                             </button>
                                             <div class="multi-dd-options" id="dropdown-assignee">
                                                 ${optionHtml(assigneeOptions, filters.assigneeValues, 'assignee')}
-                                                <button class="dd-clear" type="button" onclick="filters.assigneeValues=[]; renderTickets(lastTickets); event.stopPropagation();">Clear</button>
+                                                <button class="dd-clear" type="button" onclick="clearMultiFilter('assignee', event)">Clear</button>
                                             </div>
                                         </div>
                                     </th>
@@ -1610,7 +2856,7 @@
                                             </button>
                                             <div class="multi-dd-options" id="dropdown-priority">
                                                 ${optionHtml(priorityOptions, filters.priorityValues, 'priority')}
-                                                <button class="dd-clear" type="button" onclick="filters.priorityValues=[]; renderTickets(lastTickets); event.stopPropagation();">Clear</button>
+                                                <button class="dd-clear" type="button" onclick="clearMultiFilter('priority', event)">Clear</button>
                                             </div>
                                         </div>
                                     </th>
@@ -1637,6 +2883,12 @@
                             if (col.id === 'qaFailedCount') {
                                 return `<th class="qa-col"><input type="text" placeholder="Search QA loop" oninput="setFilter('qaFailedCount', this.value, event)" onclick="event.stopPropagation();" value="${filters.qaFailedCount || ''}"></th>`;
                             }
+                            if (col.id === 'totalBugs') {
+                                return `<th class="qa-col"><input type="text" placeholder="Search total bugs" oninput="setFilter('totalBugs', this.value, event)" onclick="event.stopPropagation();" value="${filters.totalBugs || ''}"></th>`;
+                            }
+                            if (col.id === 'openBugs') {
+                                return `<th class="qa-col"><input type="text" placeholder="Search open bugs" oninput="setFilter('openBugs', this.value, event)" onclick="event.stopPropagation();" value="${filters.openBugs || ''}"></th>`;
+                            }
                             return '<th></th>';
                         }).join('')}
                     </tr>
@@ -1661,9 +2913,7 @@
 
                 container.innerHTML = `
                     <div class="filter-actions">
-                        ${columnChooser}
-                        <button class="clear-btn" type="button" id="dashboardBtn" onclick="toggleDashboard()">Dashboard</button>
-                        <button class="clear-btn" type="button" onclick="clearFilters()">Clear filters</button>
+                        ${getFilterActionsButtons(columnChooser)}
                     </div>
                     <table class="tickets-table">
                         <thead>
@@ -1722,7 +2972,12 @@
             updateStatus('Loading tickets...');
 
             try {
-                const parent = activeTab === 'assessments' ? 'EM-1460' : 'EM-5860';
+                // Get the EM ID for the currently selected module
+                const currentModule = modules[activeModule];
+                if (!currentModule) {
+                    throw new Error(`Module "${activeModule}" not found in configuration`);
+                }
+                const parent = currentModule.emId;
                 const formBody = new URLSearchParams({ email, apiToken, parent }).toString();
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
@@ -1748,8 +3003,27 @@
 
                 const tickets = data.tickets || data.issues || data;
                 const normalized = Array.isArray(tickets) ? tickets : [tickets];
+                
+                // Ensure viewMode is set to dashboard after each fetch
+                viewMode = 'dashboard';
                 renderTickets(normalized);
                 updateStatus(`Loaded ${normalized.length} ticket(s)`);
+                
+                // Update last fetch time
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: true 
+                });
+                const dateStr = now.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+                const fetchTimeEl = document.getElementById('lastFetchTime');
+                if (fetchTimeEl) {
+                    fetchTimeEl.textContent = `${dateStr} ${timeStr}`;
+                }
             } catch (error) {
                 console.error('Error loading tickets:', error);
                 showError(`Error loading tickets: ${error.message}`);
