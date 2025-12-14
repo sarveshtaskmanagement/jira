@@ -728,6 +728,12 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
+            background: rgba(24, 104, 219, 0.12);
+            padding: 10px 12px;
+            margin-left: -16px;
+            margin-right: -16px;
+            margin-top: -16px;
+            border-radius: 8px 8px 0 0;
         }
 
         .widget-header h3 {
@@ -1510,7 +1516,9 @@
             
             return `
                 <div class="dash-card worklog-detail-widget">
-                    <h3>Worklog Details</h3>
+                    <div class="widget-header">
+                        <h3>Worklog Details</h3>
+                    </div>
                     <div class="worklog-input-container">
                         <div class="worklog-input-group">
                             <label class="date-picker-label" for="worklogDetailDatePicker">Date:</label>
@@ -2754,13 +2762,17 @@
                         ${statusSections || '<div class="dash-section"><div class="dash-section-title">Other</div><ul class="dash-list"><li><span>None</span><span>0 (0.0%)</span></li></ul></div>'}
                     </div>
                     <div class="dash-card">
-                        <h3>Assignee</h3>
+                        <div class="widget-header">
+                            <h3>Assignee</h3>
+                        </div>
                         <ul class="dash-list">
                             ${assigneeList || '<li><span>None</span><span>0 (0.0%)</span></li>'}
                         </ul>
                     </div>
                     <div class="dash-card">
-                        <h3>QA Loop</h3>
+                        <div class="widget-header">
+                            <h3>QA Loop</h3>
+                        </div>
                         <ul class="dash-list">
                             ${qaFailedList || '<li><span>0</span><span>0 tickets (0.0%)</span></li>'}
                         </ul>
