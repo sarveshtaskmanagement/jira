@@ -462,6 +462,10 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
+        .dash-card.wide {
+            grid-column: span 2;
+        }
+
         .dash-card h3 {
             margin-bottom: 12px;
             color: #444;
@@ -602,6 +606,119 @@
             min-width: 80px;
         }
 
+        /* Collapsible AC Status Widget */
+        #acStatusWidget.collapsed .dash-list {
+            display: none;
+        }
+
+        .toggle-icon {
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        /* Sub task report specific */
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .report-table td {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .report-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .report-assignee {
+            width: 140px;
+            font-size: 13px;
+            color: #444;
+            padding-right: 12px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .report-bar-cell {
+            padding-right: 10px !important;
+        }
+
+        .stacked-bar {
+            display: flex;
+            height: 18px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #f0f0f0;
+            width: 100%;
+        }
+
+        .bar-segment {
+            height: 100%;
+            transition: opacity 0.2s;
+        }
+
+        .bar-segment:hover {
+            opacity: 0.8;
+        }
+
+        .seg-todo {
+            background-color: #9e9e9e;
+        }
+
+        .seg-inprogress {
+            background-color: #ff9800;
+        }
+
+        .seg-blocked {
+            background-color: #f44336;
+        }
+
+        .seg-review {
+            background-color: #ffeb3b;
+        }
+
+        .seg-closed {
+            background-color: #4caf50;
+        }
+
+        .report-total {
+            width: 40px;
+            text-align: right;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .toggle-btn {
+            background: #1868DB !important;
+            border-radius: 50% !important;
+            width: 24px !important;
+            height: 24px !important;
+            padding: 0 !important;
+        }
+
+        .toggle-btn svg {
+            fill: #ffffff !important;
+            width: 20px !important;
+            height: 20px !important;
+        }
+
+        .toggle-btn:hover {
+            background: #1557b5 !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
         .worklog-detail-key {
             font-weight: 600;
             color: #1868DB;
@@ -695,10 +812,10 @@
             align-items: center;
             font-weight: 700;
             font-size: 15px;
-            color: #1868DB;
+            color: #444;
             margin-bottom: 8px;
             padding-bottom: 6px;
-            border-bottom: 2px solid #1868DB;
+            border-bottom: 1px solid #eee;
         }
 
         .dash-section-title .section-count {
@@ -1175,7 +1292,7 @@
         };
 
         let activeModule = 'licensing'; // Default module
-        let viewMode = 'dashboard'; // 'table' | 'dashboard' | 'fr' | 'worklog'
+        let viewMode = 'dashboard'; // 'table' | 'dashboard' | 'fr' | 'worklog' | 'sprintplan' | 'dev'
         let lastTickets = [];
         let frDataCache = [];
         let lastDevSubtasks = []; // Store fetched subtasks
@@ -1183,6 +1300,7 @@
         let devAssigneeFilters = []; // Store selected assignees for Dev View
         let devTypeFilter = ['Story', 'Sub Task', 'Bug']; // Store selected ticket types for Dev View
         let devStatusFilters = []; // Store selected statuses for Dev View
+        let devWeekFilter = null; // Store selected weeks for Dev View
         let sortField = null;
         let sortDir = 'asc';
         let openDropdown = null;
@@ -1190,6 +1308,7 @@
         let savedEmail = '';
         let savedApiToken = '';
         let isFetchingDevData = false; // Track if dev data is currently being fetched
+        let isACStatusExpanded = false; // Persistent state for AC Status widget expansion
 
         // Initialize module dropdown on page load
         function initializeModuleDropdown() {
@@ -2020,6 +2139,25 @@
             }
         }
 
+        function toggleACStatusSections() {
+            isACStatusExpanded = !isACStatusExpanded;
+            const widget = document.getElementById('acStatusWidget');
+            if (widget) {
+                if (isACStatusExpanded) {
+                    widget.classList.remove('collapsed');
+                } else {
+                    widget.classList.add('collapsed');
+                }
+                // Update toggle icon
+                const btn = widget.querySelector('.toggle-btn');
+                if (btn) {
+                    btn.innerHTML = isACStatusExpanded ?
+                        '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/></svg>' :
+                        '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/></svg>';
+                }
+            }
+        }
+
         async function copyAssigneeTimeTrackingWidget(event) {
             const widget = document.getElementById('assigneeTimeTrackingWidget');
             if (!widget) {
@@ -2190,29 +2328,40 @@
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('table')">AC View</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('fr')">FR View</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('worklog')">Worklog</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('sprintplan')">Sprint Plan β</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('dev')">Dev View</button>`);
             } else if (viewMode === 'fr') {
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('dashboard')">Dashboard</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('table')">AC View</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('worklog')">Worklog</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('sprintplan')">Sprint Plan β</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('dev')">Dev View</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="clearFRFilters()">Clear filters</button>`);
             } else if (viewMode === 'table') {
                 buttons.push(`<button class="clear-btn" type="button" id="dashboardBtn" onclick="toggleDashboard()">Dashboard</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('fr')">FR View</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('worklog')">Worklog</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('sprintplan')">Sprint Plan β</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('dev')">Dev View</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="clearFilters()">Clear filters</button>`);
             } else if (viewMode === 'worklog') {
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('dashboard')">Dashboard</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('table')">AC View</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('fr')">FR View</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('sprintplan')">Sprint Plan β</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('dev')">Dev View</button>`);
+            } else if (viewMode === 'sprintplan') {
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('dashboard')">Dashboard</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('table')">AC View</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('fr')">FR View</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('worklog')">Worklog</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('dev')">Dev View</button>`);
             } else if (viewMode === 'dev') {
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('dashboard')">Dashboard</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('table')">AC View</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('fr')">FR View</button>`);
                 buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('worklog')">Worklog</button>`);
+                buttons.push(`<button class="clear-btn" type="button" onclick="toggleView('sprintplan')">Sprint Plan β</button>`);
             }
 
             return buttons.join('\n                        ');
@@ -2954,6 +3103,16 @@
             return 'Other';
         }
 
+        const getReportCategory = (status) => {
+            const s = (status || '').toLowerCase().trim();
+            if (['to do', 'assigned'].includes(s)) return 'todo';
+            if (['in progress', 'dev complete', 'review failed'].includes(s)) return 'inprogress';
+            if (['blocked', 'awaiting clarification'].includes(s)) return 'blocked';
+            if (['closed', 'descoped'].includes(s)) return 'closed';
+            if (['dev review'].includes(s)) return 'review';
+            return 'todo';
+        };
+
         function getWorklogsByDate(tickets, selectedDate, toDate) {
             if (!selectedDate) return {};
 
@@ -3110,10 +3269,10 @@
             });
 
             // Render status sections
-            const sectionOrder = ['Dev', 'QA', 'BA', 'Done', 'Other'];
+            const sectionOrder = ['Other', 'Dev', 'QA', 'BA', 'Done'];
             const statusSections = sectionOrder.map(category => {
                 const statuses = statusByCategory[category];
-                if (statuses.length === 0) return '';
+                // if (statuses.length === 0) return '';
 
                 const sectionTotal = sectionTotals[category];
                 const sectionPercentage = totalTickets > 0 ? ((sectionTotal / totalTickets) * 100).toFixed(1) : '0.0';
@@ -3223,18 +3382,63 @@
                 })
                 .join('');
 
+            // Calculate Sub-task status report (for horizontal bar chart)
+            const subTaskReportData = {};
+            (lastDevSubtasks || []).forEach(t => {
+                const assignee = (t.assignee || 'Unassigned').trim();
+                const category = getReportCategory(t.status);
+
+                if (!subTaskReportData[assignee]) {
+                    subTaskReportData[assignee] = {
+                        todo: 0,
+                        inprogress: 0,
+                        blocked: 0,
+                        review: 0,
+                        closed: 0,
+                        total: 0
+                    };
+                }
+                subTaskReportData[assignee][category]++;
+                subTaskReportData[assignee].total++;
+            });
+
+            const subTaskReportRows = Object.entries(subTaskReportData)
+                .sort((a, b) => b[1].total - a[1].total)
+                .map(([assignee, counts]) => {
+                    const getWidth = (count) => (counts.total > 0 ? (count / counts.total) * 100 : 0);
+                    return `
+                        <tr>
+                            <td class="report-assignee" title="${assignee}">${assignee}</td>
+                            <td class="report-bar-cell">
+                                <div class="stacked-bar">
+                                    ${counts.todo > 0 ? `<div class="bar-segment seg-todo" style="width: ${getWidth(counts.todo)}%" title="ToDo: ${counts.todo}"></div>` : ''}
+                                    ${counts.inprogress > 0 ? `<div class="bar-segment seg-inprogress" style="width: ${getWidth(counts.inprogress)}%" title="In Progress: ${counts.inprogress}"></div>` : ''}
+                                    ${counts.blocked > 0 ? `<div class="bar-segment seg-blocked" style="width: ${getWidth(counts.blocked)}%" title="Blocked: ${counts.blocked}"></div>` : ''}
+                                    ${counts.review > 0 ? `<div class="bar-segment seg-review" style="width: ${getWidth(counts.review)}%" title="Review: ${counts.review}"></div>` : ''}
+                                    ${counts.closed > 0 ? `<div class="bar-segment seg-closed" style="width: ${getWidth(counts.closed)}%" title="Closed: ${counts.closed}"></div>` : ''}
+                                </div>
+                            </td>
+                            <td class="report-total">${counts.total}</td>
+                        </tr>
+                    `;
+                }).join('');
+
 
 
             // Calculate FR Status counts - dynamically from available FR data
             const frData = aggregateFRData(tickets);
-            const frStatusCounts = {};
+            const frStatusCounts = {
+                'Done': 0,
+                'Partially Done': 0,
+                'Pending': 0
+            };
             frData.forEach(fr => {
                 const status = fr.frStatus || 'Pending';
                 frStatusCounts[status] = (frStatusCounts[status] || 0) + 1;
             });
             const totalFRs = frData.length;
             // Sort statuses: Done first, then Partially Done, then Pending, then others alphabetically
-            const statusOrder = ['Done', 'Partially Done', 'Pending'];
+            const statusOrder = ['Pending', 'Partially Done', 'Done'];
             const sortedStatuses = Object.entries(frStatusCounts).sort((a, b) => {
                 const indexA = statusOrder.indexOf(a[0]);
                 const indexB = statusOrder.indexOf(b[0]);
@@ -3255,14 +3459,21 @@
                     ${getFilterActionsButtons()}
                 </div>
                 <div class="dash-grid">
-                    <div class="dash-card" id="acStatusWidget">
+                    <div class="dash-card ${isACStatusExpanded ? '' : 'collapsed'}" id="acStatusWidget">
                         <div class="widget-header">
                             <h3>AC Status</h3>
-                            <button class="snapshot-icon" onclick="copyACStatusWidget(event)" title="Copy widget as image">
-                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.5-10.5h-1.5l-1-1h-4l-1 1H9.5l-1 1H5c-1.11 0-2 .89-2 2v10c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
-                                </svg>
-                            </button>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="snapshot-icon toggle-btn" onclick="toggleACStatusSections()" title="${isACStatusExpanded ? 'Collapse' : 'Expand'}">
+                                    ${isACStatusExpanded ?
+                    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/></svg>' :
+                    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/></svg>'}
+                                </button>
+                                <button class="snapshot-icon" onclick="copyACStatusWidget(event)" title="Copy widget as image">
+                                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.5-10.5h-1.5l-1-1h-4l-1 1H9.5l-1 1H5c-1.11 0-2 .89-2 2v10c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                         ${statusSections || '<div class="dash-section"><div class="dash-section-title">Other</div><ul class="dash-list"><li><span>None</span><span>0 (0.0%)</span></li></ul></div>'}
                     </div>
@@ -3324,6 +3535,21 @@
                         <ul class="dash-list">
                             ${qaFailedList || '<li><span>0</span><span>0 tickets (0.0%)</span></li>'}
                         </ul>
+                    </div>
+                    <div class="dash-card wide" id="subTaskReportWidget">
+                        <div class="widget-header">
+                            <h3>Sub Tasks Progress</h3>
+                            <span class="section-count" style="font-weight: 700;">
+                                ${isFetchingDevData ? '<span style="font-size: 12px; font-weight: normal;">Fetching...</span>' : totalSubTasks}
+                            </span>
+                        </div>
+                        <div class="dash-section" style="margin-bottom: 0;">
+                            <table class="report-table">
+                                <tbody>
+                                    ${isFetchingDevData ? '<tr><td colspan="3" style="text-align: center; color: #777; padding: 20px;">Loading sub-task data...</td></tr>' : (subTaskReportRows || '<tr><td colspan="3" style="text-align: center; color: #777; padding: 20px;">No sub-tasks available</td></tr>')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             `;
@@ -3449,6 +3675,20 @@
                         </ul>
                     </div>
                     ${worklogDetailWidget}
+                </div>
+            `;
+        }
+
+        function renderSprintPlanView(tickets) {
+            const container = document.getElementById('ticketsContainer');
+            container.innerHTML = `
+                <div class="filter-actions">
+                    ${getFilterActionsButtons()}
+                </div>
+                <div class="sprint-plan-container" style="padding: 40px; text-align: center; color: #666;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🏗️</div>
+                    <h2 style="margin-bottom: 15px; color: #444;">Sprint Plan β</h2>
+                    <p style="font-style: italic;">This view is in progress. Sarvesh is exploring ideas and will soon introduce a feature designed to help plan sprints and track tasks before the sprint begins.</p>
                 </div>
             `;
         }
@@ -3733,7 +3973,88 @@
             const allTypes = ['Story', 'Sub Task', 'Bug'];
             const allTypesSelected = devTypeFilter.length === allTypes.length;
 
+            // Calculate Weeks
+            const weekSet = new Set();
+            [...(lastTickets || []), ...(lastDevSubtasks || []), ...allPossibleBugs].forEach(t => {
+                const label = getWeekRangeLabel(t.dueDate);
+                weekSet.add(label);
+            });
+            // Convert to array and sort strictly by date
+            const allWeeks = Array.from(weekSet).sort((a, b) => {
+                if (a === 'No due dates') return 1;
+                if (b === 'No due dates') return -1;
+
+                // Parse dates from label "Dec 22 to Dec 28"
+                // Can cheat by creating a temporary bucket-like structure or just parsing
+                // Helper to parse start date
+                const getStartDate = (lbl) => {
+                    try {
+                        // "Mon DD to Mon DD"
+                        const parts = lbl.split(' to ');
+                        if (parts.length > 0) {
+                            return new Date(parts[0] + ', ' + new Date().getFullYear()); // Append current year for sort context? 
+                            // Note: getWeekRangeLabel uses 'short' month. 'Dec 22'.
+                            // Warning: Year boundary issues.
+                            // Better approach: Find a ticket with this label and use its due date?
+                            // Or utilize the sorting logic used for buckets later.
+                        }
+                    } catch (e) { }
+                    return new Date();
+                };
+
+                // More robust: find one ticket for each label to get a real date
+                // But efficient way:
+                // Let's use the buckets logic later? No, we need it sorted for dropdown
+                return 0; // Temporary, reliance on buckets sorting might be safer or do proper parsing
+            });
+
+            // Re-sort allWeeks based on actual dates using a sample ticket or parsing
+            const weekDateMap = {};
+            [...(lastTickets || []), ...(lastDevSubtasks || []), ...allPossibleBugs].forEach(t => {
+                const label = getWeekRangeLabel(t.dueDate);
+                if (!weekDateMap[label]) {
+                    weekDateMap[label] = t.dueDate ? new Date(t.dueDate) : null;
+                }
+            });
+
+            allWeeks.sort((a, b) => {
+                if (a === 'No due dates') return 1;
+                if (b === 'No due dates') return -1;
+                const da = weekDateMap[a] || new Date(8640000000000000);
+                const db = weekDateMap[b] || new Date(8640000000000000);
+                return da - db;
+            });
+
+            // Initialize week filter if empty
+            // Initialize week filter if null (first load)
+            if (devWeekFilter === null) {
+                devWeekFilter = [...allWeeks];
+            }
+            const allWeeksSelected = devWeekFilter.length === allWeeks.length;
+
             // Generate Header HTML
+            const weekDropdownHtml = `
+                <div class="dev-filter-container" style="display:inline-block;">
+                    <div class="multi-dd" onclick="event.stopPropagation();">
+                        <button class="multi-dd-btn" id="dropdown-btn-devWeek" onclick="toggleDropdown('devWeek', event)">
+                            Week: ${allWeeksSelected ? 'All' : devWeekFilter.length + ' selected'} <span class="caret">▾</span>
+                        </button>
+                        <div class="multi-dd-options" id="dropdown-devWeek">
+                            <label class="dd-option" onclick="toggleDevWeekAll(event)">
+                                <input type="checkbox" ${allWeeksSelected ? 'checked' : ''}>
+                                <span>(Select All)</span>
+                            </label>
+                            ${allWeeks.map(week => `
+                                <label class="dd-option" onclick="toggleDevWeek('${week}', event)">
+                                    <input type="checkbox" ${devWeekFilter.includes(week) ? 'checked' : ''}>
+                                    <span>${week}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+
             const typeDropdownHtml = `
                 <div class="dev-filter-container" style="display:inline-block; margin-left: 10px;">
                     <div class="multi-dd" onclick="event.stopPropagation();">
@@ -3807,10 +4128,89 @@
                 </button>
             `;
 
+            // --- Sub-task Status Widget Logic ---
+            const subTaskStats = {};
+            let totalSubTasksForWidget = 0;
+
+            // Filter logic for widget: Respect Assignee and Week, Ignore Type and Status
+            const processForWidget = (list) => {
+                if (!list) return;
+                list.forEach(t => {
+                    // Only consider Sub Tasks
+                    if (t.type !== 'Sub Task' && !t.subtaskKeys) { // Check if it's a subtask (or has type if we added it)
+                        // Wait, in lastDevSubtasks, do we have 'type'? 
+                        // No, we usually map it. Let's look at how we get 'type' in render buckets.
+                        // render buckets uses 'lastDevSubtasks' and passes 'Sub Task'.
+                        // So here we iterate lastDevSubtasks specifically.
+                    }
+                });
+            };
+
+            // एक्चुअली, we should iterate specifically over subtasks
+            const subTaskAggregate = {
+                todo: 0,
+                inprogress: 0,
+                blocked: 0,
+                review: 0,
+                closed: 0,
+                total: 0
+            };
+
+            (lastDevSubtasks || []).forEach(st => {
+                // 1. Check Assignee Filter
+                const assignee = st.assignee || 'Unassigned';
+                if (!devAssigneeFilters.includes(assignee)) return;
+
+                // 2. Check Week Filter
+                const weekLabel = getWeekRangeLabel(st.dueDate);
+                if (!devWeekFilter.includes(weekLabel)) return;
+
+                // If passes, aggregate status
+                const category = getReportCategory(st.status);
+                subTaskAggregate[category]++;
+                subTaskAggregate.total++;
+            });
+
+            // Generate Widget HTML
+            const getWidth = (count) => (subTaskAggregate.total > 0 ? (count / subTaskAggregate.total) * 100 : 0);
+            let widgetHtml = '';
+            if (subTaskAggregate.total > 0) {
+                widgetHtml = `
+                    <div class="dash-card subtask-status-widget" style="margin-top: 15px; margin-bottom: 20px;">
+                        <div class="widget-header">
+                            <h3>Sub Tasks in View</h3>
+                            <span class="section-count" style="font-weight: 700;">${subTaskAggregate.total}</span>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <div class="stacked-bar">
+                                ${subTaskAggregate.todo > 0 ? `<div class="bar-segment seg-todo" style="width: ${getWidth(subTaskAggregate.todo)}%" title="ToDo: ${subTaskAggregate.todo}"></div>` : ''}
+                                ${subTaskAggregate.inprogress > 0 ? `<div class="bar-segment seg-inprogress" style="width: ${getWidth(subTaskAggregate.inprogress)}%" title="In Progress: ${subTaskAggregate.inprogress}"></div>` : ''}
+                                ${subTaskAggregate.blocked > 0 ? `<div class="bar-segment seg-blocked" style="width: ${getWidth(subTaskAggregate.blocked)}%" title="Blocked: ${subTaskAggregate.blocked}"></div>` : ''}
+                                ${subTaskAggregate.review > 0 ? `<div class="bar-segment seg-review" style="width: ${getWidth(subTaskAggregate.review)}%" title="Review: ${subTaskAggregate.review}"></div>` : ''}
+                                ${subTaskAggregate.closed > 0 ? `<div class="bar-segment seg-closed" style="width: ${getWidth(subTaskAggregate.closed)}%" title="Closed: ${subTaskAggregate.closed}"></div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                widgetHtml = `
+                    <div class="dash-card subtask-status-widget" style="margin-top: 15px; margin-bottom: 20px;">
+                        <div class="widget-header">
+                            <h3>Sub Tasks Status</h3>
+                            <span class="section-count" style="font-weight: 700;">0</span>
+                        </div>
+                        <div style="padding: 10px 0; color: #666; font-style: italic; font-size: 14px;">
+                            No sub-tasks found for selected options.
+                        </div>
+                    </div>
+                `;
+            }
+
             devContainer.innerHTML = `
                 <div class="post-results-header" style="margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 15px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                         <div style="display: flex; align-items: center; flex-wrap: wrap;">
+                            ${weekDropdownHtml}
                             ${assigneeDropdownHtml}
                             ${typeDropdownHtml}
                             ${statusDropdownHtml}
@@ -3823,6 +4223,7 @@
                         </div>
                         </div>
                     </div>
+                    ${widgetHtml}
                 </div>
                 <div id="devTicketsList"></div>
             `;
@@ -3857,7 +4258,7 @@
                 const da = buckets[a][0].dueDateObj || new Date(8640000000000000);
                 const db = buckets[b][0].dueDateObj || new Date(8640000000000000);
                 return da - db;
-            });
+            }).filter(label => devWeekFilter.includes(label));
 
             let html = '';
             if (sortedLabels.length === 0) {
@@ -3875,6 +4276,15 @@
                             sunday.setHours(23, 59, 59, 999);
                             if (sunday < new Date()) {
                                 isWeekOverdue = true;
+                                // If all items in this overdue week are Done, do not show red header
+                                const doneStatuses = ['done', 'closed', 'resolved', 'not a defect', 'descoped'];
+                                const allDone = buckets[label].every(item => {
+                                    const status = (item.data.status || '').toLowerCase().trim();
+                                    return doneStatuses.includes(status);
+                                });
+                                if (allDone) {
+                                    isWeekOverdue = false;
+                                }
                             }
                         }
                     }
@@ -4187,6 +4597,89 @@
             }, 0);
         }
 
+        function toggleDevWeek(val, evt) {
+            if (evt) evt.stopPropagation();
+            const index = devWeekFilter.indexOf(val);
+            if (index === -1) {
+                devWeekFilter.push(val);
+            } else {
+                devWeekFilter.splice(index, 1);
+            }
+            renderPostResults();
+            setTimeout(() => {
+                const dd = document.getElementById('dropdown-devWeek');
+                if (dd) dd.classList.add('open');
+                openDropdown = 'devWeek';
+            }, 0);
+        }
+
+        function toggleDevWeekAll(evt) {
+            if (evt) evt.stopPropagation();
+
+            const weekSet = new Set();
+            const process = (list) => {
+                if (!list) return;
+                list.forEach(t => {
+                    weekSet.add(getWeekRangeLabel(t.dueDate));
+                    if (t.linkedBugs) t.linkedBugs.forEach(b => weekSet.add(getWeekRangeLabel(b.dueDate)));
+                });
+            };
+            process(lastTickets);
+            process(lastDevSubtasks);
+            if (lastDevBugsDetailed) lastDevBugsDetailed.forEach(b => weekSet.add(getWeekRangeLabel(b.dueDate)));
+
+            const allWeeks = Array.from(weekSet);
+
+            // Toggle logic: if null(All) or full, switch to empty. Else select all.
+            if (devWeekFilter === null || devWeekFilter.length === allWeeks.length) {
+                devWeekFilter = [];
+            } else {
+                devWeekFilter = [...allWeeks];
+            }
+
+            renderPostResults();
+            setTimeout(() => {
+                const dd = document.getElementById('dropdown-devWeek');
+                if (dd) dd.classList.add('open');
+                openDropdown = 'devWeek';
+            }, 0);
+        }
+
+        function resetDevViewFilters() {
+            const assigneeSet = new Set();
+            const statusSet = new Set();
+
+            const process = (list) => {
+                if (!list) return;
+                list.forEach(t => {
+                    assigneeSet.add(t.assignee || 'Unassigned');
+                    statusSet.add(t.status);
+                    (t.linkedBugs || []).forEach(b => {
+                        assigneeSet.add(b.assignee || 'Unassigned');
+                        statusSet.add(b.status);
+                    });
+                });
+            };
+
+            process(lastTickets);
+            process(lastDevSubtasks);
+            if (lastDevBugsDetailed) {
+                lastDevBugsDetailed.forEach(b => {
+                    assigneeSet.add(b.assignee || 'Unassigned');
+                    statusSet.add(b.status);
+                });
+            }
+
+            devAssigneeFilters = Array.from(assigneeSet);
+            devStatusFilters = Array.from(statusSet);
+            devTypeFilter = ['Story', 'Sub Task', 'Bug'];
+
+            devWeekFilter = null;
+
+            renderPostResults();
+        }
+
+
 
 
         function toggleSubtaskGroup(groupId) {
@@ -4406,6 +4899,11 @@
 
             if (viewMode === 'worklog') {
                 renderWorklogView(tickets);
+                return;
+            }
+
+            if (viewMode === 'sprintplan') {
+                renderSprintPlanView(tickets);
                 return;
             }
 
