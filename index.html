@@ -622,7 +622,8 @@
 
         /* Collapsible AC Status Widget & Sub-task Status Widget */
         #acStatusWidget.collapsed .dash-list,
-        #subTaskStatusWidget.collapsed .dash-list {
+        #subTaskStatusWidget.collapsed .dash-list,
+        #bugStatusWidget.collapsed .dash-list {
             display: none;
         }
 
@@ -1426,6 +1427,7 @@
         let lastSprintDetails = null; // Store fetched sprint details
         let isACStatusExpanded = false; // Persistent state for AC Status widget expansion
         let isSubTaskStatusExpanded = false; // Persistent state for Sub-task Status widget expansion
+        let isBugStatusExpanded = false; // Persistent state for Bug Status widget expansion
 
         // Initialize module dropdown on page load
         function initializeModuleDropdown() {
@@ -2356,6 +2358,151 @@
             }
         }
 
+        function toggleBugStatus() {
+            isBugStatusExpanded = !isBugStatusExpanded;
+            const widget = document.getElementById('bugStatusWidget');
+            if (widget) {
+                if (isBugStatusExpanded) {
+                    widget.classList.remove('collapsed');
+                } else {
+                    widget.classList.add('collapsed');
+                }
+                // Update toggle icon
+                const btn = widget.querySelector('.toggle-btn');
+                if (btn) {
+                    btn.innerHTML = isBugStatusExpanded ?
+                        '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/></svg>' :
+                        '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/></svg>';
+                }
+            }
+        }
+
+        async function copyBugStatusWidget(event) {
+            const widget = document.getElementById('bugStatusWidget');
+            if (!widget) {
+                alert('Widget not found');
+                return;
+            }
+
+            const button = event ? (event.target.closest('.snapshot-icon') || event.target) : document.querySelector('#bugStatusWidget .snapshot-icon');
+            const svg = button ? button.querySelector('svg') : null;
+            const originalSvg = svg ? svg.outerHTML : null;
+
+            try {
+                // Capture the widget as canvas
+                const canvas = await html2canvas(widget, {
+                    backgroundColor: '#ffffff',
+                    scale: 2, // Higher quality
+                    logging: false
+                });
+
+                // Convert canvas to blob
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        alert('Failed to create image');
+                        return;
+                    }
+
+                    try {
+                        // Copy to clipboard
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': blob
+                            })
+                        ]);
+
+                        // Visual feedback - show checkmark
+                        if (svg) {
+                            svg.outerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="fill: #2e7d32;"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>';
+                            setTimeout(() => {
+                                if (originalSvg) {
+                                    svg.outerHTML = originalSvg;
+                                }
+                            }, 2000);
+                        }
+                    } catch (err) {
+                        console.error('Failed to copy to clipboard:', err);
+                        // Fallback: download the image
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'bug-status-widget.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        alert('Image copied! If clipboard didn\'t work, the image was downloaded instead.');
+                    }
+                }, 'image/png');
+            } catch (err) {
+                console.error('Failed to capture widget:', err);
+                alert('Failed to capture widget as image');
+            }
+        }
+
+        async function copyPendingBugsPriorityWidget(event) {
+            const widget = document.getElementById('pendingBugsPriorityWidget');
+            if (!widget) {
+                alert('Widget not found');
+                return;
+            }
+
+            const button = event ? (event.target.closest('.snapshot-icon') || event.target) : document.querySelector('#pendingBugsPriorityWidget .snapshot-icon');
+            const svg = button ? button.querySelector('svg') : null;
+            const originalSvg = svg ? svg.outerHTML : null;
+
+            try {
+                // Capture the widget as canvas
+                const canvas = await html2canvas(widget, {
+                    backgroundColor: '#ffffff',
+                    scale: 2, // Higher quality
+                    logging: false
+                });
+
+                // Convert canvas to blob
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        alert('Failed to create image');
+                        return;
+                    }
+
+                    try {
+                        // Copy to clipboard
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': blob
+                            })
+                        ]);
+
+                        // Visual feedback - show checkmark
+                        if (svg) {
+                            svg.outerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="fill: #2e7d32;"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>';
+                            setTimeout(() => {
+                                if (originalSvg) {
+                                    svg.outerHTML = originalSvg;
+                                }
+                            }, 2000);
+                        }
+                    } catch (err) {
+                        console.error('Failed to copy to clipboard:', err);
+                        // Fallback: download the image
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'pending-bugs-priority-widget.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        alert('Image copied! If clipboard didn\'t work, the image was downloaded instead.');
+                    }
+                }, 'image/png');
+            } catch (err) {
+                console.error('Failed to capture widget:', err);
+                alert('Failed to capture widget as image');
+            }
+        }
+
         async function copyAssigneeTimeTrackingWidget(event) {
             const widget = document.getElementById('assigneeTimeTrackingWidget');
             if (!widget) {
@@ -2430,17 +2577,23 @@
         }
 
         // --- Pie Chart Helper ---
-        function generatePieChartSVG(data, colors, totalValue) {
+        function generatePieChartSVG(data, colors, totalValue, centerLabel = 'Total FRs', widgetId = 'FR') {
             if (!data || data.length === 0 || totalValue === 0) return '';
+
+            const countId = `pieCenterCount-${widgetId}`;
+            const labelId = `pieCenterLabel-${widgetId}`;
 
             const legendHtml = `
                 <div class="pie-legend">
-                    ${data.map(slice => `
+                    ${data.map(slice => {
+                const percentage = totalValue > 0 ? ((slice.value / totalValue) * 100).toFixed(1) : '0.0';
+                return `
                         <div class="legend-item">
                             <div class="legend-color" style="background-color: ${colors[slice.label] || '#ccc'}"></div>
-                            <span>${slice.label} (${slice.value})</span>
+                            <span>${slice.label} - ${percentage}% (${slice.value})</span>
                         </div>
-                    `).join('')}
+                    `;
+            }).join('')}
                 </div>
             `;
 
@@ -2453,14 +2606,14 @@
                     <div class="pie-chart-container">
                         <svg viewBox="0 0 2 2" class="pie-chart-svg" style="display: block;">
                             <circle cx="1" cy="1" r="1" fill="${colors[slice.label] || '#ccc'}" class="pie-slice"
-                                    onmouseover="updatePieCenter('${slice.value}', '${slice.label} (${percentage}%)')"
-                                    onmouseout="updatePieCenter('${totalValue}', 'Total FRs')">
+                                    onmouseover="updatePieCenter('${slice.value}', '${slice.label} (${percentage}%)', '${countId}', '${labelId}')"
+                                    onmouseout="updatePieCenter('${totalValue}', '${centerLabel}', '${countId}', '${labelId}')">
                                 <title>${slice.label}: ${slice.value} (${percentage}%)</title>
                             </circle>
                         </svg>
-                        <div class="pie-center-text" id="pieCenterText">
-                            <span class="pie-center-count" id="pieCenterCount">${totalValue}</span>
-                            <span class="pie-center-label" id="pieCenterLabel">Total FRs</span>
+                        <div class="pie-center-text">
+                            <span class="pie-center-count" id="${countId}">${totalValue}</span>
+                            <span class="pie-center-label" id="${labelId}">${centerLabel}</span>
                         </div>
                     </div>
                     ${legendHtml}
@@ -2490,8 +2643,8 @@
                     <path d="${pathData}" 
                           fill="${colors[slice.label] || '#ccc'}" 
                           class="pie-slice"
-                          onmouseover="updatePieCenter('${slice.value}', '${slice.label} (${percentage}%)')"
-                          onmouseout="updatePieCenter('${totalValue}', 'Total FRs')">
+                          onmouseover="updatePieCenter('${slice.value}', '${slice.label} (${percentage}%)', '${countId}', '${labelId}')"
+                          onmouseout="updatePieCenter('${totalValue}', '${centerLabel}', '${countId}', '${labelId}')">
                         <title>${slice.label}: ${slice.value} (${percentage}%)</title>
                     </path>
                 `;
@@ -2502,9 +2655,9 @@
                     <svg viewBox="0 0 2 2" class="pie-chart-svg" style="display: block;">
                         ${slices}
                     </svg>
-                    <div class="pie-center-text" id="pieCenterText">
-                        <span class="pie-center-count" id="pieCenterCount">${totalValue}</span>
-                        <span class="pie-center-label" id="pieCenterLabel">Total FRs</span>
+                    <div class="pie-center-text">
+                        <span class="pie-center-count" id="${countId}">${totalValue}</span>
+                        <span class="pie-center-label" id="${labelId}">${centerLabel}</span>
                     </div>
                 </div>
                 ${legendHtml}
@@ -2518,9 +2671,9 @@
             return [x + 1, y + 1];
         }
 
-        function updatePieCenter(count, label) {
-            const countEl = document.getElementById('pieCenterCount');
-            const labelEl = document.getElementById('pieCenterLabel');
+        function updatePieCenter(count, label, countId, labelId) {
+            const countEl = document.getElementById(countId);
+            const labelEl = document.getElementById(labelId);
             if (countEl) countEl.textContent = count;
             if (labelEl) labelEl.textContent = label;
         }
@@ -3907,7 +4060,112 @@
                 `;
             }).filter(section => section !== '').join('');
 
+            // Calculate Bug status by category
+            const bugStatusMap = {};
+            (lastDevBugsDetailed || []).forEach(t => {
+                const status = (t.status || 'Unknown').trim();
+                bugStatusMap[status] = (bugStatusMap[status] || 0) + 1;
+            });
 
+            const bugStatusByCategory = {
+                'To Do': [],
+                'Dev': [],
+                'Blocked': [],
+                'QA': [],
+                'Closed': [],
+                'Other': []
+            };
+
+            const bugStatusMapping = {
+                'new': 'To Do',
+                'assigned': 'Dev',
+                'dev in progress': 'Dev',
+                'dev complete': 'Dev',
+                'reopened': 'Dev',
+                'awaiting clarification': 'Blocked',
+                'blocked': 'Blocked',
+                'ready to review': 'QA',
+                'qa in progress': 'QA',
+                'closed': 'Closed',
+                'not a defect': 'Closed',
+                'descoped': 'Closed'
+            };
+
+            Object.entries(bugStatusMap).forEach(([status, count]) => {
+                const category = bugStatusMapping[status.toLowerCase().trim()] || 'Other';
+                bugStatusByCategory[category].push({ status, count });
+            });
+
+            // Sort statuses within each category by count (descending)
+            Object.keys(bugStatusByCategory).forEach(category => {
+                bugStatusByCategory[category].sort((a, b) => b.count - a.count);
+            });
+
+            // Calculate category totals
+            const bugSectionTotals = {};
+            const totalBugsCount = (lastDevBugsDetailed || []).length;
+            Object.keys(bugStatusByCategory).forEach(category => {
+                bugSectionTotals[category] = bugStatusByCategory[category].reduce((sum, { count }) => sum + count, 0);
+            });
+
+            // Render bug status sections
+            const bugSectionOrder = ['To Do', 'Dev', 'Blocked', 'QA', 'Closed', 'Other'];
+            const bugStatusSections = bugSectionOrder.map(category => {
+                const statuses = bugStatusByCategory[category];
+                const sectionTotal = bugSectionTotals[category];
+                if (sectionTotal === 0 && (category === 'Other' || category === 'To Do' || category === 'Dev' || category === 'Blocked' || category === 'QA' || category === 'Closed')) {
+                    // Show 0 if empty but skip 'Other' if it's 0
+                    if (category === 'Other') return '';
+                }
+
+                const sectionPercentage = totalBugsCount > 0 ? ((sectionTotal / totalBugsCount) * 100).toFixed(1) : '0.0';
+
+                const statusItems = statuses.map(({ status, count }) => {
+                    const percentage = totalBugsCount > 0 ? ((count / totalBugsCount) * 100).toFixed(1) : '0.0';
+                    return `<li><span>${status}</span><span>${count} (${percentage}%)</span></li>`;
+                }).join('');
+
+                return `
+                    <div class="dash-section">
+                        <div class="dash-section-title">
+                            <span>${category}</span>
+                            <span class="section-count">${sectionTotal} (${sectionPercentage}%)</span>
+                        </div>
+                        ${statusItems ? `<ul class="dash-list">${statusItems}</ul>` : ''}
+                    </div>
+                `;
+            }).filter(section => section !== '').join('');
+
+            // Calculate Pending Bugs Priority
+            const pendingBugPriorityMap = {};
+            const pendingStatusCategories = ['To Do', 'Dev', 'Blocked', 'QA'];
+            let totalPendingBugs = 0;
+
+            (lastDevBugsDetailed || []).forEach(t => {
+                const status = (t.status || 'Unknown').trim().toLowerCase();
+                const category = bugStatusMapping[status] || 'Other';
+
+                if (pendingStatusCategories.includes(category)) {
+                    const priority = (t.priority || 'Medium').trim();
+                    pendingBugPriorityMap[priority] = (pendingBugPriorityMap[priority] || 0) + 1;
+                    totalPendingBugs++;
+                }
+            });
+
+            const priorityColorMap = {
+                'Highest': '#d32f2f',
+                'High': '#f44336',
+                'Medium': '#ff9800',
+                'Low': '#4caf50',
+                'Lowest': '#8bc34a'
+            };
+
+            const pendingBugPriorityData = Object.entries(pendingBugPriorityMap)
+                .map(([label, value]) => ({ label, value }))
+                .sort((a, b) => {
+                    const order = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
+                    return order.indexOf(a.label) - order.indexOf(b.label);
+                });
 
             // Calculate FR Status counts - dynamically from available FR data
             const frData = aggregateFRData(tickets);
@@ -3957,7 +4215,9 @@
                             ${totalFRs > 0 ? generatePieChartSVG(
                 sortedStatuses.map(([label, value]) => ({ label, value })),
                 { 'Pending': '#9e9e9e', 'Partially Done': '#ff9800', 'Done': '#4caf50' },
-                totalFRs
+                totalFRs,
+                'Total FRs',
+                'FR'
             ) : '<div class="empty-state" style="padding: 20px;">No FRs available</div>'}
                         </div>
                     </div>
@@ -4050,6 +4310,44 @@
                         <ul class="dash-list">
                             ${isFetchingDevData ? '<li style="justify-content: center; color: #777;">Loading...</li>' : (subTasksSPList || '<li><span>None</span><span>0 (0.0%)</span></li>')}
                         </ul>
+                    </div>
+                    <div class="dash-card ${isBugStatusExpanded ? '' : 'collapsed'}" id="bugStatusWidget">
+                        <div class="widget-header">
+                            <h3>Bugs Status</h3>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="snapshot-icon toggle-btn" onclick="toggleBugStatus()" title="${isBugStatusExpanded ? 'Collapse' : 'Expand'}">
+                                    ${isBugStatusExpanded ?
+                    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/></svg>' :
+                    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/></svg>'}
+                                </button>
+                                <button class="snapshot-icon" onclick="copyBugStatusWidget(event)" title="Copy widget as image">
+                                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.5-10.5h-1.5l-1-1h-4l-1 1H9.5l-1 1H5c-1.11 0-2 .89-2 2v10c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
+                                    </svg>
+                                </button>
+                                <span class="section-count" style="font-weight: 700;">${totalBugsCount}</span>
+                            </div>
+                        </div>
+                        ${isFetchingDevData ? '<div class="dash-section" style="text-align: center; color: #777; padding: 20px;">Loading bug status...</div>' : (bugStatusSections || '<div class="dash-section"><div class="dash-section-title">Other</div><ul class="dash-list"><li><span>None</span><span>0 (0.0%)</span></li></ul></div>')}
+                    </div>
+                    <div class="dash-card" id="pendingBugsPriorityWidget">
+                        <div class="widget-header">
+                            <h3>Pending Bugs Priority</h3>
+                            <button class="snapshot-icon" onclick="copyPendingBugsPriorityWidget(event)" title="Copy widget as image">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.5-10.5h-1.5l-1-1h-4l-1 1H9.5l-1 1H5c-1.11 0-2 .89-2 2v10c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="dash-section" style="margin-bottom: 0;">
+                            ${isFetchingDevData ? '<div class="dash-section" style="text-align: center; color: #777; padding: 20px;">Loading pending bugs...</div>' : (totalPendingBugs > 0 ? generatePieChartSVG(
+                        pendingBugPriorityData,
+                        priorityColorMap,
+                        totalPendingBugs,
+                        'Pending Bugs',
+                        'PendingBugs'
+                    ) : '<div class="empty-state" style="padding: 20px;">No pending bugs available</div>')}
+                        </div>
                     </div>
                     <div class="dash-card wide" id="acReportWidget">
                         <div class="widget-header">
