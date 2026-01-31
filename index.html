@@ -9,8 +9,9 @@
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%231c65e3' d='M64 64c0-17.7-14.3-32-32-32S0 46.3 0 64L0 400c0 44.2 35.8 80 80 80l400 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L80 416c-8.8 0-16-7.2-16-16L64 64zm406.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L320 210.7 262.6 153.4c-12.5-12.5-32.8-12.5-45.3 0l-96 96c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l73.4-73.4 57.4 57.4c12.5 12.5 32.8 12.5 45.3 0l128-128z'/%3E%3C/svg%3E">
     <script>
         // JIRA Apps Script URL - Update this when you deploy a new version
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwiJK4zZmzp7qGE1OzwF7cBeZrebPPwIZqKwJFWOLHAB2P6QwYk3upUHXZdiJmaXwZDGg/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzWW-2bhd-_AGvIl2p1167B6A4MECQDr755-ZMWj6U46eZQ0uIYeTLPsxgl3xdycffMPw/exec';
         const JIRA_BASE_URL = 'https://cardyai-hawaii.atlassian.net/browse/';
+        const APP_VERSION = '1.22.0';
     </script>
     <style>
         * {
@@ -294,7 +295,8 @@
             display: block;
         }
 
-        .tickets-container {
+        .tickets-container,
+        .tickets-table-container {
             padding: 30px;
             overflow-x: auto;
         }
@@ -1349,6 +1351,7 @@
         </div>
         <div class="fetch-time-container">
             <span id="lastFetchTime"></span>
+            <div id="appVersionDisplay" style="font-size: 11px; color: #888; margin-top: 4px;"></div>
         </div>
 
         <div class="loading" id="loading">
@@ -1443,6 +1446,57 @@
         let isACStatusExpanded = false; // Persistent state for AC Status widget expansion
         let isSubTaskStatusExpanded = false; // Persistent state for Sub-task Status widget expansion
         let isBugStatusExpanded = false; // Persistent state for Bug Status widget expansion
+        let qaPendingSortField = null;
+        let qaPendingSortDir = 'asc';
+        const qaPendingFilters = {
+            key: '',
+            summary: '',
+            statusValues: [],
+            assigneeValues: [],
+            qaFailedCount: '',
+            totalBugs: '',
+            openBugs: '',
+            updated: '',
+            qaStoryPoints: ''
+        };
+        const qaPendingColumnVisibility = {
+            serial: true,
+            key: true,
+            summary: false,
+            status: true,
+            assignee: true,
+            qaFailedCount: true,
+            totalBugs: true,
+            openBugs: true,
+            updated: false,
+            qaStoryPoints: false
+        };
+
+        let qaBugSortField = null;
+        let qaBugSortDir = 'asc';
+        const qaBugFilters = {
+            key: '',
+            summary: '',
+            statusValues: [],
+            assigneeValues: [],
+            linkedToDisplay: ''
+        };
+        const qaBugColumns = [
+            { id: 'serial', label: '#', sortable: false, className: 'serial-col' },
+            { id: 'key', label: 'Key', sortable: true },
+            { id: 'summary', label: 'Summary', sortable: true },
+            { id: 'status', label: 'Status', sortable: true },
+            { id: 'assignee', label: 'Assignee', sortable: true },
+            { id: 'linkedToDisplay', label: 'Linked To', sortable: true }
+        ];
+        const qaBugColumnVisibility = {
+            serial: true,
+            key: true,
+            summary: true,
+            status: true,
+            assignee: true,
+            linkedToDisplay: true
+        };
 
         // Initialize module dropdown on page load
         function initializeModuleDropdown() {
@@ -1462,6 +1516,12 @@
                 }
                 moduleSelect.appendChild(option);
             });
+
+            // Set version display
+            const versionEl = document.getElementById('appVersionDisplay');
+            if (versionEl) {
+                versionEl.textContent = `Version: ${APP_VERSION}`;
+            }
         }
 
         // Initialize on page load
@@ -1489,6 +1549,19 @@
             { id: 'totalBugs', label: 'Total Bugs', sortable: 'totalBugs', className: 'qa-col' },
             { id: 'openBugs', label: 'Open Bugs', sortable: 'openBugs', className: 'qa-col' },
             { id: 'subTaskCount', label: 'Sub Tasks', sortable: 'subTaskCount', className: 'qa-col' },
+        ];
+
+        const qaPendingColumns = [
+            { id: 'serial', label: '#', sortable: null, className: 'serial-col' },
+            { id: 'key', label: 'Key', sortable: 'key' },
+            { id: 'summary', label: 'Summary', sortable: 'summary' },
+            { id: 'status', label: 'Status', sortable: 'status' },
+            { id: 'assignee', label: 'Assignee', sortable: 'assignee' },
+            { id: 'qaFailedCount', label: 'QA Loop', sortable: 'qaFailedCount', className: 'qa-col' },
+            { id: 'totalBugs', label: 'Total Bugs', sortable: 'totalBugs', className: 'qa-col' },
+            { id: 'openBugs', label: 'Open Bugs', sortable: 'openBugs', className: 'qa-col' },
+            { id: 'updated', label: 'Updated', sortable: 'updated' },
+            { id: 'qaStoryPoints', label: 'QA Story Points', sortable: 'qaStoryPoints', className: 'qa-col' },
         ];
 
         // Single source of truth for default column visibility
@@ -2792,7 +2865,8 @@
                 { id: 'fr', label: 'FR View', onClick: "toggleView('fr')" },
                 { id: 'worklog', label: 'Worklog', onClick: "toggleView('worklog')" },
                 { id: 'sprintplan', label: 'Sprint Plan β', onClick: "toggleView('sprintplan')" },
-                { id: 'dev', label: 'Dev View', onClick: "toggleView('dev')" }
+                { id: 'dev', label: 'Dev View', onClick: "toggleView('dev')" },
+                { id: 'qa', label: 'QA View', onClick: "toggleView('qa')" }
             ];
 
             viewConfigs.forEach(conf => {
@@ -2906,23 +2980,32 @@
             const frMap = {};
 
             tickets.forEach(ticket => {
-                if (!ticket.frId) return;
+                // Support both frIds (new array format) and frId (old single format)
+                let ids = ticket.frIds || (ticket.frId ? [ticket.frId] : []);
 
-                if (!frMap[ticket.frId]) {
-                    frMap[ticket.frId] = {
-                        frId: ticket.frId,
-                        totalTickets: 0,
-                        doneTickets: 0,
-                        pendingTickets: 0,
-                        frStatus: ''
-                    };
-                }
+                // Ensure ids is an array and filter for "FR" prefix (case-insensitive)
+                if (!Array.isArray(ids)) ids = [ids];
+                ids = ids.filter(id => id && typeof id === 'string' && id.toUpperCase().startsWith('FR'));
 
-                frMap[ticket.frId].totalTickets++;
+                if (ids.length === 0) return;
 
-                if (ticket.statusCategory === 'Done') {
-                    frMap[ticket.frId].doneTickets++;
-                }
+                ids.forEach(id => {
+                    if (!frMap[id]) {
+                        frMap[id] = {
+                            frId: id,
+                            totalTickets: 0,
+                            doneTickets: 0,
+                            pendingTickets: 0,
+                            frStatus: ''
+                        };
+                    }
+
+                    frMap[id].totalTickets++;
+
+                    if (ticket.statusCategory === 'Done') {
+                        frMap[id].doneTickets++;
+                    }
+                });
             });
 
             // Calculate pending and status for each FR
@@ -3688,6 +3771,9 @@
                 return;
             }
 
+            // --- FILTER: Exclude Validation Story sub-tasks from generic Dashboard widgets ---
+            const subTasksExcludingQA = (lastDevSubtasks || []).filter(t => t.storyType !== 'Validation Story');
+
             const statusCounts = {};
             const assigneeCounts = {};
             const totalTickets = tickets.length;
@@ -3762,7 +3848,7 @@
 
             const assigneeSubTaskCounts = {};
             let totalSubTasks = 0;
-            (lastDevSubtasks || []).forEach(t => {
+            subTasksExcludingQA.forEach(t => {
                 const assignee = (t.assignee || 'Unassigned').trim();
                 assigneeSubTaskCounts[assignee] = (assigneeSubTaskCounts[assignee] || 0) + 1;
                 totalSubTasks++;
@@ -3779,7 +3865,7 @@
             // Calculate Assignee (Sub Task Story Points)
             const assigneeSubTaskSP = {};
             let totalSubTaskSP = 0;
-            (lastDevSubtasks || []).forEach(t => {
+            subTasksExcludingQA.forEach(t => {
                 const assignee = (t.assignee || 'Unassigned').trim();
                 // Ensure storyPoints is treated as a number
                 // Check various possible locations/names for Story Points
@@ -3852,7 +3938,7 @@
                 totalVSP: 0
             };
 
-            (lastDevSubtasks || []).forEach(t => {
+            subTasksExcludingQA.forEach(t => {
                 const assignee = (t.assignee || 'Unassigned').trim();
                 const category = getReportCategory(t.status);
 
@@ -4009,7 +4095,7 @@
 
             // Calculate Sub-task status by category
             const subTaskStatusMap = {};
-            (lastDevSubtasks || []).forEach(t => {
+            subTasksExcludingQA.forEach(t => {
                 const status = (t.status || 'Unknown').trim();
                 subTaskStatusMap[status] = (subTaskStatusMap[status] || 0) + 1;
             });
@@ -4076,8 +4162,9 @@
             }).filter(section => section !== '').join('');
 
             // Calculate Bug status by category
+            const dashboardBugs = getQABugsDetailedList();
             const bugStatusMap = {};
-            (lastDevBugsDetailed || []).forEach(t => {
+            dashboardBugs.forEach(t => {
                 const status = (t.status || 'Unknown').trim();
                 bugStatusMap[status] = (bugStatusMap[status] || 0) + 1;
             });
@@ -4118,7 +4205,7 @@
 
             // Calculate category totals
             const bugSectionTotals = {};
-            const totalBugsCount = (lastDevBugsDetailed || []).length;
+            const totalBugsCount = dashboardBugs.length;
             Object.keys(bugStatusByCategory).forEach(category => {
                 bugSectionTotals[category] = bugStatusByCategory[category].reduce((sum, { count }) => sum + count, 0);
             });
@@ -4156,7 +4243,7 @@
             const pendingStatusCategories = ['To Do', 'Dev', 'Blocked', 'QA'];
             let totalPendingBugs = 0;
 
-            (lastDevBugsDetailed || []).forEach(t => {
+            dashboardBugs.forEach(t => {
                 const status = (t.status || 'Unknown').trim().toLowerCase();
                 const category = bugStatusMapping[status] || 'Other';
 
@@ -4747,7 +4834,7 @@
                         email: email,
                         apiToken: apiToken,
                         keys: keys,
-                        fields: ['summary', 'status', 'assignee', 'storyPoints', 'customfield_10048', 'customfield_10026', 'customfield_10016', 'customfield_10034', 'issuetype', 'parent', 'priority']
+                        fields: ['summary', 'status', 'assignee', 'storyPoints', 'customfield_10048', 'customfield_10026', 'customfield_10016', 'customfield_10034', 'customfield_10101', 'issuetype', 'parent', 'priority', 'customfield_10065']
                     };
                     fetchPromises.push(fetch(subtaskUrl, { method: 'POST', body: JSON.stringify(subtaskPayload) }).then(r => r.json()));
                 } else {
@@ -4832,6 +4919,8 @@
                     if (document.getElementById('devResultsContainer')) renderPostResults();
                 } else if (viewMode === 'dashboard') {
                     renderDashboard(lastTickets);
+                } else if (viewMode === 'qa') {
+                    renderQAView(lastTickets);
                 }
             }
         }
@@ -4839,39 +4928,14 @@
         function renderPostResults() {
             const devContainer = document.getElementById('devResultsContainer');
 
-            // Consolidate only bugs that are linked to stories (or their sub-tasks) of this sprint
-            const bugMap = new Map();
-            const storyKeys = new Set((lastTickets || []).map(t => t.key));
+            // --- FILTER: Exclude Validation Story sub-tasks from Dev View listing & widgets ---
+            const subTasksExcludingQA = (lastDevSubtasks || []).filter(t => t.storyType !== 'Validation Story');
 
-            // 1. Collect from Stories (both issuelinks and parent/child relation)
-            (lastTickets || []).forEach(p => {
-                // Issuelinks
-                (p.linkedBugs || []).forEach(b => {
-                    const detail = (lastDevBugsDetailed || []).find(d => d.key === b.key);
-                    bugMap.set(b.key, detail || b);
-                });
-            });
-
-            // 2. Collect from Sub-tasks (issuelinks)
-            (lastDevSubtasks || []).forEach(st => {
-                (st.linkedBugs || []).forEach(b => {
-                    const detail = (lastDevBugsDetailed || []).find(d => d.key === b.key);
-                    bugMap.set(b.key, detail || b);
-                });
-            });
-
-            // 3. Collect from Detailed list (parent relation - bugs that are children of stories)
-            (lastDevBugsDetailed || []).forEach(b => {
-                if (b.parentKey && storyKeys.has(b.parentKey)) {
-                    if (!bugMap.has(b.key)) bugMap.set(b.key, b);
-                }
-            });
-
-            const allPossibleBugs = Array.from(bugMap.values());
+            const allPossibleBugs = getQABugsDetailedList();
 
             // Create global maps for expansion context (all children, unfiltered)
             const subtaskMapByParent = {};
-            (lastDevSubtasks || []).forEach(st => {
+            subTasksExcludingQA.forEach(st => {
                 const pk = st.parentKey || (st.parent ? st.parent.key : null);
                 if (pk) {
                     if (!subtaskMapByParent[pk]) subtaskMapByParent[pk] = [];
@@ -5088,7 +5152,7 @@
                 });
             };
 
-            // एक्चुअली, we should iterate specifically over subtasks
+            // Actually, we should iterate specifically over subtasks
             const subTaskAggregate = {
                 todo: 0,
                 inprogress: 0,
@@ -5098,7 +5162,7 @@
                 total: 0
             };
 
-            (lastDevSubtasks || []).forEach(st => {
+            subTasksExcludingQA.forEach(st => {
                 // 1. Check Assignee Filter
                 const assignee = st.assignee || 'Unassigned';
                 if (!devAssigneeFilters.includes(assignee)) return;
@@ -5190,7 +5254,7 @@
 
             // Process all
             (lastTickets || []).forEach(t => addToBucket(t, 'Story'));
-            (lastDevSubtasks || []).forEach(t => addToBucket(t, 'Sub Task'));
+            subTasksExcludingQA.forEach(t => addToBucket(t, 'Sub Task'));
             allPossibleBugs.forEach(t => addToBucket(t, 'Bug'));
 
             // Sort buckets
@@ -5804,6 +5868,833 @@
             `;
         }
 
+        // --- QA VIEW LOGIC ---
+
+        function getQABugsDetailedList() {
+            // Consolidate only bugs that are linked to stories (or their sub-tasks) of this sprint
+            const bugMap = new Map();
+            const storyKeys = new Set((lastTickets || []).map(t => t.key));
+
+            const addBug = (bug, storyKey) => {
+                if (!bug || !bug.key) return;
+                let existing = bugMap.get(bug.key);
+                if (!existing) {
+                    const detail = (lastDevBugsDetailed || []).find(d => d.key === bug.key);
+                    existing = { ...(detail || bug), type: 'Bug', linkedTo: new Set() };
+                    bugMap.set(bug.key, existing);
+                }
+                if (storyKey) existing.linkedTo.add(storyKey);
+            };
+
+            // 1. Collect from Stories (both issuelinks and parent/child relation)
+            (lastTickets || []).forEach(p => {
+                (p.linkedBugs || []).forEach(b => addBug(b, p.key));
+            });
+
+            // 2. Collect from Sub-tasks (issuelinks)
+            const subTasksExcludingQA = (lastDevSubtasks || []).filter(t => t.storyType !== 'Validation Story');
+            subTasksExcludingQA.forEach(st => {
+                const parentKey = st.parentKey || (st.parent ? st.parent.key : null);
+                (st.linkedBugs || []).forEach(b => addBug(b, parentKey));
+            });
+
+            // 3. Collect from Detailed list (parent relation - bugs that are children of stories)
+            (lastDevBugsDetailed || []).forEach(b => {
+                const parents = b.parentKeys || (b.parentKey ? [b.parentKey] : (b.parent ? [b.parent.key] : []));
+                parents.forEach(pk => {
+                    if (pk && storyKeys.has(pk)) {
+                        addBug(b, pk);
+                    }
+                });
+            });
+
+            return Array.from(bugMap.values()).map(b => {
+                if (!b.url && b.key) {
+                    b.url = `${JIRA_BASE_URL}${b.key}`;
+                }
+                // Convert linkedTo set to comma-separated string
+                b.linkedToDisplay = Array.from(b.linkedTo || []).sort().join(', ');
+                return b;
+            });
+        }
+
+        function renderQAView(tickets) {
+            lastTickets = tickets || [];
+            const container = document.getElementById('ticketsContainer');
+
+            if (isFetchingDevData) {
+                container.innerHTML = `
+                    <div class="filter-actions" style="border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                        ${getFilterActionsButtons().tabs}
+                    </div>
+                    <div class="loading-state" style="padding: 40px; text-align: center;">
+                        <p>Fetching QA Data (Sub-tasks)...</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Filter for Validation Story sub-tasks
+            const qaSubTasks = (lastDevSubtasks || []).filter(t => t.storyType === 'Validation Story');
+
+            if (qaSubTasks.length === 0) {
+                container.innerHTML = `
+                    <div class="filter-actions" style="border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                        ${getFilterActionsButtons().tabs}
+                    </div>
+                    <div class="empty-state" style="padding: 40px; text-align: center; color: #666;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🔍</div>
+                        <h3>No QA Validation Stories found</h3>
+                        <p>No sub-tasks with "Story Type" set to "Validation Story" were found in this sprint.</p>
+                        <button class="primary-btn" onclick="fetchDevTicketsPost()" style="margin-top: 20px;">
+                            <span class="btn-icon">⚡</span>Refresh Dev Data
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // --- 1. QA Sub Tasks Status Widget ---
+            const qaStatusMap = {};
+            qaSubTasks.forEach(t => {
+                const status = t.status || 'Unknown';
+                qaStatusMap[status] = (qaStatusMap[status] || 0) + 1;
+            });
+
+            const qaStatusByCategory = {
+                'To Do': [], 'In Progress': [], 'Review': [], 'Closed': [], 'Blocked': [], 'Other': []
+            };
+            const subTaskCatMap = { 'todo': 'To Do', 'inprogress': 'In Progress', 'review': 'Review', 'closed': 'Closed', 'blocked': 'Blocked' };
+
+            Object.entries(qaStatusMap).forEach(([status, count]) => {
+                const category = subTaskCatMap[getReportCategory(status)] || 'Other';
+                qaStatusByCategory[category].push({ status, count });
+            });
+
+            const totalQA = qaSubTasks.length;
+            const qaStatusSections = ['To Do', 'In Progress', 'Blocked', 'Review', 'Closed', 'Other'].map(category => {
+                const statuses = qaStatusByCategory[category];
+                const sectionTotal = statuses.reduce((sum, s) => sum + s.count, 0);
+                if (sectionTotal === 0 && category === 'Other') return '';
+
+                const sectionPercentage = ((sectionTotal / totalQA) * 100).toFixed(1);
+                const items = statuses.map(s => `<li><span>${s.status}</span><span>${s.count} (${((s.count / totalQA) * 100).toFixed(1)}%)</span></li>`).join('');
+
+                return `
+                    <div class="dash-section">
+                        <div class="dash-section-title">
+                            <span>${category}</span>
+                            <span class="section-count">${sectionTotal} (${sectionPercentage}%)</span>
+                        </div>
+                        <ul class="dash-list">${items}</ul>
+                    </div>
+                `;
+            }).join('');
+
+            // --- 2. QA Sub Tasks Assignee Widget ---
+            const qaAssigneeMap = {};
+            qaSubTasks.forEach(t => {
+                const assignee = t.assignee || 'Unassigned';
+                qaAssigneeMap[assignee] = (qaAssigneeMap[assignee] || 0) + 1;
+            });
+
+            const qaAssigneeList = Object.entries(qaAssigneeMap)
+                .sort((a, b) => b[1] - a[1])
+                .map(([name, count]) => {
+                    const percentage = ((count / totalQA) * 100).toFixed(1);
+                    return `<li><span>${name}</span><span>${count} (${percentage}%)</span></li>`;
+                }).join('');
+
+            // --- 3. QA Sub Tasks Points Widget ---
+            const qaAssigneeSP = {};
+            let totalSP = 0;
+            qaSubTasks.forEach(t => {
+                const assignee = t.assignee || 'Unassigned';
+                let sp = t.qaStoryPoints || t.customfield_10101 || t.storyPoints;
+                if (typeof sp !== 'number') sp = parseFloat(sp);
+                if (isNaN(sp)) sp = 0;
+                qaAssigneeSP[assignee] = (qaAssigneeSP[assignee] || 0) + sp;
+                totalSP += sp;
+            });
+
+            const qaSPList = Object.entries(qaAssigneeSP)
+                .sort((a, b) => b[1] - a[1])
+                .map(([name, sp]) => {
+                    const percentage = totalSP > 0 ? ((sp / totalSP) * 100).toFixed(1) : '0.0';
+                    return `<li><span>${name}</span><span>${Math.round(sp * 10) / 10} (${percentage}%)</span></li>`;
+                }).join('');
+
+            container.innerHTML = `
+                <div class="filter-actions">
+                    ${getFilterActionsButtons().tabs}
+                </div>
+                <div class="dash-grid">
+                    <div class="dash-card">
+                        <div class="widget-header">
+                            <h3>QA Sub Tasks status</h3>
+                            <span class="section-count" style="font-weight: 700;">${totalQA}</span>
+                        </div>
+                        ${qaStatusSections}
+                    </div>
+                    <div class="dash-card">
+                        <div class="widget-header">
+                            <h3>QA Sub Tasks Assignee</h3>
+                            <span class="section-count" style="font-weight: 700;">${totalQA}</span>
+                        </div>
+                        <ul class="dash-list">${qaAssigneeList}</ul>
+                    </div>
+                    <div class="dash-card">
+                        <div class="widget-header">
+                            <div>
+                                <h3>QA Sub Tasks Points</h3>
+                                <span class="widget-subtitle">Story points for validation</span>
+                            </div>
+                            <span class="section-count" style="font-weight: 700;">${Math.round(totalSP * 10) / 10}</span>
+                        </div>
+                        <ul class="dash-list">${qaSPList}</ul>
+                    </div>
+                </div>
+
+                <div class="qa-pending-grid-section" style="margin-top: 30px;">
+                    <div class="widget-header" style="margin-bottom: 10px;">
+                        <h3>Story Pending QA Review</h3>
+                    </div>
+                    <div class="filter-actions" style="margin-bottom: 15px; padding: 0;">
+                        <button class="clear-btn" onclick="exportQAPendingToCSV()">
+                            Export
+                        </button>
+                        <div class="multi-dd">
+                            <button class="multi-dd-btn" id="dropdown-btn-qa-columns" type="button" onclick="toggleDropdown('qa-columns', event)">
+                                ${getQAPendingColumnsDropdownLabel()} <span class="caret">▾</span>
+                            </button>
+                            <div class="multi-dd-options" id="dropdown-qa-columns">
+                                ${qaPendingColumns.map(col => `
+                                    <label>
+                                        <input type="checkbox" ${qaPendingColumnVisibility[col.id] ? 'checked' : ''} onchange="toggleQAPendingColumnVisibility('${col.id}', this.checked, event)">
+                                        ${col.label}
+                                    </label>
+                                `).join('')}
+                                <button class="dd-clear" type="button" onclick="resetQAPendingColumns(event)">Reset</button>
+                            </div>
+                        </div>
+                        <button class="clear-btn" onclick="clearQAPendingFilters()">
+                            Clear filters
+                        </button>
+                    </div>
+                    <div class="tickets-table-container">
+                        <table class="tickets-table qa-pending-table">
+                            <thead>
+                                ${getQAPendingTableHeader(tickets)}
+                            </thead>
+                            <tbody id="qaPendingTableBody">
+                                ${updateQAPendingTableBody(tickets)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="qa-bugs-grid-section" style="margin-top: 40px;">
+                    <div class="widget-header" style="margin-bottom: 10px;">
+                        <h3>QA Bugs</h3>
+                    </div>
+                    <div class="filter-actions" style="margin-bottom: 15px; padding: 0;">
+                        <button class="clear-btn" onclick="exportQABugToCSV()">
+                            Export
+                        </button>
+                        <div class="multi-dd">
+                            <button class="multi-dd-btn" id="dropdown-btn-qa-bug-columns" type="button" onclick="toggleDropdown('qa-bug-columns', event)">
+                                ${getQABugColumnsDropdownLabel()} <span class="caret">▾</span>
+                            </button>
+                            <div class="multi-dd-options" id="dropdown-qa-bug-columns">
+                                ${qaBugColumns.map(col => `
+                                    <label>
+                                        <input type="checkbox" ${qaBugColumnVisibility[col.id] ? 'checked' : ''} onchange="toggleQABugColumnVisibility('${col.id}', this.checked, event)">
+                                        ${col.label}
+                                    </label>
+                                `).join('')}
+                                <button class="dd-clear" type="button" onclick="resetQABugColumns(event)">Reset</button>
+                            </div>
+                        </div>
+                        <button class="clear-btn" onclick="clearQABugFilters()">
+                            Clear filters
+                        </button>
+                    </div>
+                    <div class="tickets-table-container">
+                        <table class="tickets-table qa-bugs-table">
+                            <thead>
+                                ${getQABugTableHeader()}
+                            </thead>
+                            <tbody id="qaBugTableBody">
+                                ${updateQABugTableBody()}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getQAPendingColumnsDropdownLabel() {
+            const visibleCount = Object.values(qaPendingColumnVisibility).filter(Boolean).length;
+            const total = qaPendingColumns.length;
+            return visibleCount === total ? 'Columns (All)' : `Columns (${visibleCount}/${total})`;
+        }
+
+        function exportQAPendingToCSV() {
+            const visible = applyQAPendingFiltersAndSort(lastTickets);
+            const visibleCols = qaPendingColumns.filter(c => qaPendingColumnVisibility[c.id]);
+
+            let csv = visibleCols.map(c => `"${c.label}"`).join(',') + '\n';
+
+            visible.forEach((ticket, idx) => {
+                const row = visibleCols.map(col => {
+                    let value = '';
+                    if (col.id === 'serial') value = idx + 1;
+                    else if (col.id === 'key') value = ticket.key || '';
+                    else if (col.id === 'summary') value = ticket.summary || ticket.title || '';
+                    else if (col.id === 'status') value = ticket.status || '';
+                    else if (col.id === 'assignee') value = ticket.assignee || '';
+                    else if (col.id === 'qaFailedCount') value = ticket.qaFailedCount || 0;
+                    else if (col.id === 'totalBugs') value = ticket.totalBugs || 0;
+                    else if (col.id === 'openBugs') value = ticket.openBugs || 0;
+                    else if (col.id === 'updated') value = ticket.updated ? formatDate(ticket.updated) : '';
+                    else if (col.id === 'qaStoryPoints') {
+                        let sp = ticket.qaStoryPoints || ticket.customfield_10101;
+                        if (typeof sp !== 'number') sp = parseFloat(sp);
+                        value = !isNaN(sp) ? sp : 0;
+                    }
+                    return `"${String(value).replace(/"/g, '""')}"`;
+                }).join(',');
+                csv += row + '\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'story_pending_qa_review.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function toggleQAPendingColumnVisibility(colId, checked, evt) {
+            if (evt) evt.stopPropagation();
+            qaPendingColumnVisibility[colId] = checked;
+            if (viewMode === 'qa') {
+                renderQAView(lastTickets);
+            }
+        }
+
+        function resetQAPendingColumns(evt) {
+            if (evt) evt.stopPropagation();
+            Object.keys(qaPendingColumnVisibility).forEach(k => qaPendingColumnVisibility[k] = true);
+            if (viewMode === 'qa') {
+                renderQAView(lastTickets);
+            }
+        }
+
+        function clearQAPendingFilters() {
+            qaPendingFilters.key = '';
+            qaPendingFilters.summary = '';
+            qaPendingFilters.statusValues = [];
+            qaPendingFilters.assigneeValues = [];
+            if (viewMode === 'qa') {
+                renderQAView(lastTickets);
+            }
+        }
+
+        function getQABugColumnsDropdownLabel() {
+            const visibleCount = Object.values(qaBugColumnVisibility).filter(Boolean).length;
+            const total = qaBugColumns.length;
+            return visibleCount === total ? 'Columns (All)' : `Columns (${visibleCount}/${total})`;
+        }
+
+        function exportQABugToCSV() {
+            const visible = applyQABugFiltersAndSort();
+            const visibleCols = qaBugColumns.filter(c => qaBugColumnVisibility[c.id]);
+
+            let csv = visibleCols.map(c => `"${c.label}"`).join(',') + '\n';
+
+            visible.forEach((ticket, idx) => {
+                const row = visibleCols.map(col => {
+                    let value = '';
+                    if (col.id === 'serial') value = idx + 1;
+                    else if (col.id === 'key') value = ticket.key || '';
+                    else if (col.id === 'summary') value = ticket.summary || ticket.title || '';
+                    else if (col.id === 'status') value = ticket.status || '';
+                    else if (col.id === 'assignee') value = ticket.assignee || '';
+                    else if (col.id === 'linkedToDisplay') value = ticket.linkedToDisplay || '';
+                    return `"${String(value).replace(/"/g, '""')}"`;
+                }).join(',');
+                csv += row + '\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'qa_bugs.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function toggleQABugColumnVisibility(colId, checked, evt) {
+            if (evt) evt.stopPropagation();
+            qaBugColumnVisibility[colId] = checked;
+            if (viewMode === 'qa') {
+                renderQAView(lastTickets);
+            }
+        }
+
+        function resetQABugColumns(evt) {
+            if (evt) evt.stopPropagation();
+            Object.keys(qaBugColumnVisibility).forEach(k => qaBugColumnVisibility[k] = true);
+            if (viewMode === 'qa') {
+                renderQAView(lastTickets);
+            }
+        }
+
+        function clearQABugFilters() {
+            qaBugFilters.key = '';
+            qaBugFilters.summary = '';
+            qaBugFilters.statusValues = [];
+            qaBugFilters.assigneeValues = [];
+            if (viewMode === 'qa') {
+                renderQAView(lastTickets);
+            }
+        }
+
+        function applyQAPendingFiltersAndSort(tickets) {
+            // Only stories in specific statuses
+            const baseStatuses = ['Ready to review', 'Review failed', 'QA in progress'];
+            let filtered = (tickets || []).filter(t => {
+                const status = (t.status || '').trim();
+                return baseStatuses.some(s => s.toLowerCase() === status.toLowerCase());
+            });
+
+            // Apply filters
+            filtered = filtered.filter(t => {
+                const key = (t.key || '').toLowerCase().includes(qaPendingFilters.key.toLowerCase());
+                const summary = (t.summary || t.title || '').toLowerCase().includes(qaPendingFilters.summary.toLowerCase());
+
+                const statusValue = (t.status || '').toLowerCase();
+                const status = qaPendingFilters.statusValues.length === 0 || qaPendingFilters.statusValues.includes(statusValue);
+
+                const assigneeValue = (t.assignee || '').toLowerCase();
+                const assignee = qaPendingFilters.assigneeValues.length === 0 || qaPendingFilters.assigneeValues.includes(assigneeValue);
+
+                const qaFailedCount = (t.qaFailedCount ?? '').toString().toLowerCase().includes(qaPendingFilters.qaFailedCount.toLowerCase());
+                const totalBugs = (t.totalBugs ?? '').toString().toLowerCase().includes(qaPendingFilters.totalBugs.toLowerCase());
+                const openBugs = (t.openBugs ?? '').toString().toLowerCase().includes(qaPendingFilters.openBugs.toLowerCase());
+                const updated = t.updated ? formatDate(t.updated).toLowerCase().includes(qaPendingFilters.updated.toLowerCase()) : (qaPendingFilters.updated === '');
+
+                let spValue = t.qaStoryPoints || t.customfield_10101;
+                if (typeof spValue !== 'number') spValue = parseFloat(spValue);
+                const qaStoryPoints = (isNaN(spValue) ? '' : Math.round(spValue * 10) / 10).toString().toLowerCase().includes(qaPendingFilters.qaStoryPoints.toLowerCase());
+
+                return key && summary && status && assignee && qaFailedCount && totalBugs && openBugs && updated && qaStoryPoints;
+            });
+
+            if (!qaPendingSortField) return filtered;
+
+            const dir = qaPendingSortDir === 'asc' ? 1 : -1;
+            return filtered.slice().sort((a, b) => {
+                // Numeric fields
+                if (['totalBugs', 'openBugs', 'qaFailedCount', 'qaStoryPoints'].includes(qaPendingSortField)) {
+                    let va = typeof a[qaPendingSortField] === 'number' ? a[qaPendingSortField] : 0;
+                    let vb = typeof b[qaPendingSortField] === 'number' ? b[qaPendingSortField] : 0;
+                    return (va - vb) * dir;
+                }
+                // String fields
+                const va = (a[qaPendingSortField] ?? '').toString().toLowerCase();
+                const vb = (b[qaPendingSortField] ?? '').toString().toLowerCase();
+                if (va < vb) return -1 * dir;
+                if (va > vb) return 1 * dir;
+                return 0;
+            });
+        }
+
+        function getQAPendingTableHeader(tickets) {
+            const baseStatuses = ['Ready to review', 'Review failed', 'QA in progress'];
+            const stories = (tickets || []).filter(t => {
+                const status = (t.status || '').trim();
+                return baseStatuses.some(s => s.toLowerCase() === status.toLowerCase());
+            });
+
+            const statusOptions = Array.from(new Set(stories.map(t => t.status).filter(Boolean))).sort();
+            const assigneeOptions = Array.from(new Set(stories.map(t => t.assignee).filter(Boolean))).sort();
+
+            const optionHtml = (opts, selected, field) => opts.map(opt => {
+                const isSel = selected.includes(opt.toLowerCase());
+                const safe = opt.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                return `
+                    <label>
+                        <input type="checkbox" ${isSel ? 'checked' : ''} onchange="toggleQAPendingMultiOption('${field}', '${safe}', this.checked, event)">
+                        ${safe}
+                    </label>
+                `;
+            }).join('');
+
+            const visibleColumns = qaPendingColumns.filter(c => qaPendingColumnVisibility[c.id]);
+
+            const headerRow = visibleColumns.map(col => {
+                const sortableAttrs = col.sortable
+                    ? `class="sortable ${col.className || ''} ${qaPendingSortField === col.id ? 'sorted' : ''}" onclick="setQAPendingSort('${col.id}')"`
+                    : `${col.className ? `class="${col.className}"` : ''}`;
+                const indicator = col.sortable ? `<span class="sort-indicator">${qaPendingSortField === col.id ? (qaPendingSortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>` : '';
+                return `<th ${sortableAttrs}>${col.label} ${indicator}</th>`;
+            }).join('');
+
+            const filterRow = visibleColumns.map(col => {
+                if (col.id === 'serial') return '<th class="serial-col">#</th>';
+                if (col.id === 'key') return `<th><input type="text" placeholder="Search key" oninput="setQAPendingFilter('key', this.value, event)" onclick="event.stopPropagation();" value="${qaPendingFilters.key || ''}"></th>`;
+                if (col.id === 'summary') return `<th><input type="text" placeholder="Search summary" oninput="setQAPendingFilter('summary', this.value, event)" onclick="event.stopPropagation();" value="${qaPendingFilters.summary || ''}"></th>`;
+                if (col.id === 'status') {
+                    const label = qaPendingFilters.statusValues.length === 0 ? 'All' : (qaPendingFilters.statusValues.length === 1 ? qaPendingFilters.statusValues[0] : `${qaPendingFilters.statusValues.length} selected`);
+                    return `
+                        <th>
+                            <div class="multi-dd" onclick="event.stopPropagation();">
+                                <button class="multi-dd-btn" id="dropdown-btn-qa-status" type="button" onclick="toggleDropdown('qa-status', event)">
+                                    ${label} <span class="caret">▾</span>
+                                </button>
+                                <div class="multi-dd-options" id="dropdown-qa-status">
+                                    ${optionHtml(statusOptions, qaPendingFilters.statusValues, 'status')}
+                                    <button class="dd-clear" type="button" onclick="clearQAPendingMultiFilter('status', event)">Clear</button>
+                                </div>
+                            </div>
+                        </th>
+                    `;
+                }
+                if (col.id === 'assignee') {
+                    const label = qaPendingFilters.assigneeValues.length === 0 ? 'All' : (qaPendingFilters.assigneeValues.length === 1 ? qaPendingFilters.assigneeValues[0] : `${qaPendingFilters.assigneeValues.length} selected`);
+                    return `
+                        <th>
+                            <div class="multi-dd" onclick="event.stopPropagation();">
+                                <button class="multi-dd-btn" id="dropdown-btn-qa-assignee" type="button" onclick="toggleDropdown('qa-assignee', event)">
+                                    ${label} <span class="caret">▾</span>
+                                </button>
+                                <div class="multi-dd-options" id="dropdown-qa-assignee">
+                                    ${optionHtml(assigneeOptions, qaPendingFilters.assigneeValues, 'assignee')}
+                                    <button class="dd-clear" type="button" onclick="clearQAPendingMultiFilter('assignee', event)">Clear</button>
+                                </div>
+                            </div>
+                        </th>
+                    `;
+                }
+                if (col.id === 'qaFailedCount') return `<th><input type="text" placeholder="Search" oninput="setQAPendingFilter('qaFailedCount', this.value, event)" onclick="event.stopPropagation();" value="${qaPendingFilters.qaFailedCount || ''}"></th>`;
+                if (col.id === 'totalBugs') return `<th><input type="text" placeholder="Search" oninput="setQAPendingFilter('totalBugs', this.value, event)" onclick="event.stopPropagation();" value="${qaPendingFilters.totalBugs || ''}"></th>`;
+                if (col.id === 'openBugs') return `<th><input type="text" placeholder="Search" oninput="setQAPendingFilter('openBugs', this.value, event)" onclick="event.stopPropagation();" value="${qaPendingFilters.openBugs || ''}"></th>`;
+                if (col.id === 'updated') return `<th><input type="text" placeholder="Search" oninput="setQAPendingFilter('updated', this.value, event)" onclick="event.stopPropagation();" value="${qaPendingFilters.updated || ''}"></th>`;
+                if (col.id === 'qaStoryPoints') return `<th><input type="text" placeholder="Search" oninput="setQAPendingFilter('qaStoryPoints', this.value, event)" onclick="event.stopPropagation();" value="${qaPendingFilters.qaStoryPoints || ''}"></th>`;
+                return '<th></th>';
+            }).join('');
+
+            return `<tr>${headerRow}</tr><tr>${filterRow}</tr>`;
+        }
+
+        function updateQAPendingTableBody(tickets) {
+            const visible = applyQAPendingFiltersAndSort(tickets);
+            const visibleCols = qaPendingColumns.filter(c => qaPendingColumnVisibility[c.id]);
+            return visible.map((ticket, idx) => {
+                const cells = visibleCols.map(col => {
+                    let value = '';
+                    if (col.id === 'serial') value = idx + 1;
+                    else if (col.id === 'key') value = ticket.key || 'N/A';
+                    else if (col.id === 'summary') value = ticket.summary || ticket.title || 'No title';
+                    else if (col.id === 'status') value = `<span class="ticket-status">${ticket.status || 'Unknown'}</span>`;
+                    else if (col.id === 'assignee') value = ticket.assignee || '';
+                    else if (col.id === 'qaFailedCount') value = typeof ticket.qaFailedCount === 'number' ? ticket.qaFailedCount : '';
+                    else if (col.id === 'totalBugs') value = typeof ticket.totalBugs === 'number' ? ticket.totalBugs : '';
+                    else if (col.id === 'openBugs') value = typeof ticket.openBugs === 'number' ? ticket.openBugs : '';
+                    else if (col.id === 'updated') value = ticket.updated ? formatDate(ticket.updated) : '';
+                    else if (col.id === 'qaStoryPoints') {
+                        let sp = ticket.qaStoryPoints || ticket.customfield_10101;
+                        if (typeof sp !== 'number') sp = parseFloat(sp);
+                        value = !isNaN(sp) ? Math.round(sp * 10) / 10 : '';
+                    }
+                    const className = col.className ? ` class="${col.className}"` : '';
+                    return `<td${className}>${value}</td>`;
+                }).join('');
+                return `<tr onclick="window.open('${ticket.url || '#'}', '_blank')" style="cursor:pointer;">${cells}</tr>`;
+            }).join('');
+        }
+
+        function toggleQAPendingMultiOption(field, value, checked, evt) {
+            if (evt) evt.stopPropagation();
+            const key = `${field}Values`;
+            const arr = qaPendingFilters[key] || [];
+            const norm = value.toLowerCase();
+            const exists = arr.includes(norm);
+            if (checked && !exists) {
+                arr.push(norm);
+            } else if (!checked && exists) {
+                qaPendingFilters[key] = arr.filter(v => v !== norm);
+            }
+            if (viewMode === 'qa') {
+                const tbody = document.getElementById('qaPendingTableBody');
+                if (tbody) {
+                    tbody.innerHTML = updateQAPendingTableBody(lastTickets);
+
+                    // Update button label
+                    const btn = document.getElementById(`dropdown-btn-qa-${field}`);
+                    if (btn) {
+                        const vals = qaPendingFilters[key];
+                        const label = vals.length === 0 ? 'All' : (vals.length === 1 ? vals[0] : `${vals.length} selected`);
+                        btn.innerHTML = `${label} <span class="caret">▾</span>`;
+                    }
+                } else {
+                    renderQAView(lastTickets);
+                }
+            }
+        }
+
+        function clearQAPendingMultiFilter(field, evt) {
+            if (evt) evt.stopPropagation();
+            qaPendingFilters[`${field}Values`] = [];
+            if (viewMode === 'qa') {
+                const tbody = document.getElementById('qaPendingTableBody');
+                if (tbody) {
+                    tbody.innerHTML = updateQAPendingTableBody(lastTickets);
+
+                    // Update button label
+                    const btn = document.getElementById(`dropdown-btn-qa-${field}`);
+                    if (btn) {
+                        btn.innerHTML = `All <span class="caret">▾</span>`;
+                    }
+                    // Uncheck checkboxes
+                    const container = document.getElementById(`dropdown-qa-${field}`);
+                    if (container) {
+                        container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                    }
+                } else {
+                    renderQAView(lastTickets);
+                }
+            }
+        }
+
+        function setQAPendingFilter(field, value, evt) {
+            if (evt) evt.stopPropagation();
+            qaPendingFilters[field] = value;
+            if (viewMode === 'qa') {
+                const tbody = document.getElementById('qaPendingTableBody');
+                if (tbody) {
+                    tbody.innerHTML = updateQAPendingTableBody(lastTickets);
+                } else {
+                    renderQAView(lastTickets);
+                }
+            }
+        }
+
+        function setQAPendingSort(field) {
+            if (qaPendingSortField === field) {
+                qaPendingSortDir = qaPendingSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                qaPendingSortField = field;
+                qaPendingSortDir = 'asc';
+            }
+            if (viewMode === 'qa') {
+                renderQAView(lastTickets);
+            }
+        }
+
+        function applyQABugFiltersAndSort() {
+            // Use the consolidated bug list
+            let filtered = getQABugsDetailedList();
+
+            // Apply filters
+            filtered = filtered.filter(t => {
+                const key = (t.key || '').toLowerCase().includes(qaBugFilters.key.toLowerCase());
+                const summary = (t.summary || t.title || '').toLowerCase().includes(qaBugFilters.summary.toLowerCase());
+
+                const statusValue = (t.status || '').toLowerCase();
+                const status = qaBugFilters.statusValues.length === 0 || qaBugFilters.statusValues.includes(statusValue);
+
+                const assigneeValue = (t.assignee || '').toLowerCase();
+                const assignee = qaBugFilters.assigneeValues.length === 0 || qaBugFilters.assigneeValues.includes(assigneeValue);
+
+                const linkedTo = (t.linkedToDisplay || '').toLowerCase().includes(qaBugFilters.linkedToDisplay.toLowerCase());
+
+                return key && summary && status && assignee && linkedTo;
+            });
+
+            if (!qaBugSortField) return filtered;
+
+            const dir = qaBugSortDir === 'asc' ? 1 : -1;
+            return filtered.slice().sort((a, b) => {
+                const va = (a[qaBugSortField] ?? '').toString().toLowerCase();
+                const vb = (b[qaBugSortField] ?? '').toString().toLowerCase();
+                if (va < vb) return -1 * dir;
+                if (va > vb) return 1 * dir;
+                return 0;
+            });
+        }
+
+        function getQABugTableHeader() {
+            const bugs = getQABugsDetailedList();
+            const statusOptions = Array.from(new Set(bugs.map(t => t.status).filter(Boolean))).sort();
+            const assigneeOptions = Array.from(new Set(bugs.map(t => t.assignee).filter(Boolean))).sort();
+
+            const optionHtml = (opts, selected, field) => opts.map(opt => {
+                const isSel = selected.includes(opt.toLowerCase());
+                const safe = opt.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                return `
+                    <label>
+                        <input type="checkbox" ${isSel ? 'checked' : ''} onchange="toggleQABugMultiOption('${field}', '${safe}', this.checked, event)">
+                        ${safe}
+                    </label>
+                `;
+            }).join('');
+
+            const visibleColumns = qaBugColumns.filter(c => qaBugColumnVisibility[c.id]);
+
+            const headerRow = visibleColumns.map(col => {
+                const sortableAttrs = col.sortable
+                    ? `class="sortable ${col.className || ''} ${qaBugSortField === col.id ? 'sorted' : ''}" onclick="setQABugSort('${col.id}')"`
+                    : `${col.className ? `class="${col.className}"` : ''}`;
+                const indicator = col.sortable ? `<span class="sort-indicator">${qaBugSortField === col.id ? (qaBugSortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>` : '';
+                return `<th ${sortableAttrs}>${col.label} ${indicator}</th>`;
+            }).join('');
+
+            const filterRow = visibleColumns.map(col => {
+                if (col.id === 'serial') return '<th class="serial-col">#</th>';
+                if (col.id === 'key') return `<th><input type="text" placeholder="Search key" oninput="setQABugFilter('key', this.value, event)" onclick="event.stopPropagation();" value="${qaBugFilters.key || ''}"></th>`;
+                if (col.id === 'summary') return `<th><input type="text" placeholder="Search summary" oninput="setQABugFilter('summary', this.value, event)" onclick="event.stopPropagation();" value="${qaBugFilters.summary || ''}"></th>`;
+                if (col.id === 'status') {
+                    const label = qaBugFilters.statusValues.length === 0 ? 'All' : (qaBugFilters.statusValues.length === 1 ? qaBugFilters.statusValues[0] : `${qaBugFilters.statusValues.length} selected`);
+                    return `
+                        <th>
+                            <div class="multi-dd" onclick="event.stopPropagation();">
+                                <button class="multi-dd-btn" id="dropdown-btn-qa-bug-status" type="button" onclick="toggleDropdown('qa-bug-status', event)">
+                                    ${label} <span class="caret">▾</span>
+                                </button>
+                                <div class="multi-dd-options" id="dropdown-qa-bug-status">
+                                    ${optionHtml(statusOptions, qaBugFilters.statusValues, 'status')}
+                                    <button class="dd-clear" type="button" onclick="clearQABugMultiFilter('status', event)">Clear</button>
+                                </div>
+                            </div>
+                        </th>
+                    `;
+                }
+                if (col.id === 'assignee') {
+                    const label = qaBugFilters.assigneeValues.length === 0 ? 'All' : (qaBugFilters.assigneeValues.length === 1 ? qaBugFilters.assigneeValues[0] : `${qaBugFilters.assigneeValues.length} selected`);
+                    return `
+                        <th>
+                            <div class="multi-dd" onclick="event.stopPropagation();">
+                                <button class="multi-dd-btn" id="dropdown-btn-qa-bug-assignee" type="button" onclick="toggleDropdown('qa-bug-assignee', event)">
+                                    ${label} <span class="caret">▾</span>
+                                </button>
+                                <div class="multi-dd-options" id="dropdown-qa-bug-assignee">
+                                    ${optionHtml(assigneeOptions, qaBugFilters.assigneeValues, 'assignee')}
+                                    <button class="dd-clear" type="button" onclick="clearQABugMultiFilter('assignee', event)">Clear</button>
+                                </div>
+                            </div>
+                        </th>
+                    `;
+                }
+                if (col.id === 'linkedToDisplay') return `<th><input type="text" placeholder="Search" oninput="setQABugFilter('linkedToDisplay', this.value, event)" onclick="event.stopPropagation();" value="${qaBugFilters.linkedToDisplay || ''}"></th>`;
+                return '<th></th>';
+            }).join('');
+
+            return `<tr>${headerRow}</tr><tr>${filterRow}</tr>`;
+        }
+
+        function updateQABugTableBody() {
+            const visible = applyQABugFiltersAndSort();
+            const visibleCols = qaBugColumns.filter(c => qaBugColumnVisibility[c.id]);
+            return visible.map((ticket, idx) => {
+                const cells = visibleCols.map(col => {
+                    let value = '';
+                    if (col.id === 'serial') value = idx + 1;
+                    else if (col.id === 'key') value = ticket.key || 'N/A';
+                    else if (col.id === 'summary') value = ticket.summary || ticket.title || 'No title';
+                    else if (col.id === 'status') value = `<span class="ticket-status">${ticket.status || 'Unknown'}</span>`;
+                    else if (col.id === 'assignee') value = ticket.assignee || '';
+                    else if (col.id === 'linkedToDisplay') value = ticket.linkedToDisplay || '';
+                    const className = col.className ? ` class="${col.className}"` : '';
+                    return `<td${className}>${value}</td>`;
+                }).join('');
+                return `<tr onclick="window.open('${ticket.url || '#'}', '_blank')" style="cursor:pointer;">${cells}</tr>`;
+            }).join('');
+        }
+
+        function toggleQABugMultiOption(field, value, checked, evt) {
+            if (evt) evt.stopPropagation();
+            const key = `${field}Values`;
+            const arr = qaBugFilters[key] || [];
+            const norm = value.toLowerCase();
+            const exists = arr.includes(norm);
+            if (checked && !exists) {
+                arr.push(norm);
+                qaBugFilters[key] = arr;
+            } else if (!checked && exists) {
+                qaBugFilters[key] = arr.filter(v => v !== norm);
+            }
+            if (viewMode === 'qa') {
+                const tbody = document.getElementById('qaBugTableBody');
+                if (tbody) {
+                    tbody.innerHTML = updateQABugTableBody();
+
+                    // Update button label
+                    const btn = document.getElementById(`dropdown-btn-qa-bug-${field}`);
+                    if (btn) {
+                        const vals = qaBugFilters[key];
+                        const label = vals.length === 0 ? 'All' : (vals.length === 1 ? vals[0] : `${vals.length} selected`);
+                        btn.innerHTML = `${label} <span class="caret">▾</span>`;
+                    }
+                } else {
+                    renderQAView(lastTickets);
+                }
+            }
+        }
+
+        function clearQABugMultiFilter(field, evt) {
+            if (evt) evt.stopPropagation();
+            qaBugFilters[`${field}Values`] = [];
+            if (viewMode === 'qa') {
+                const tbody = document.getElementById('qaBugTableBody');
+                if (tbody) {
+                    tbody.innerHTML = updateQABugTableBody();
+
+                    // Update button label
+                    const btn = document.getElementById(`dropdown-btn-qa-bug-${field}`);
+                    if (btn) {
+                        btn.innerHTML = `All <span class="caret">▾</span>`;
+                    }
+                    // Uncheck checkboxes
+                    const container = document.getElementById(`dropdown-qa-bug-${field}`);
+                    if (container) {
+                        container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                    }
+                } else {
+                    renderQAView(lastTickets);
+                }
+            }
+        }
+
+        function setQABugFilter(field, value, evt) {
+            if (evt) evt.stopPropagation();
+            qaBugFilters[field] = value;
+            if (viewMode === 'qa') {
+                const tbody = document.getElementById('qaBugTableBody');
+                if (tbody) {
+                    tbody.innerHTML = updateQABugTableBody();
+                } else {
+                    renderQAView(lastTickets);
+                }
+            }
+        }
+
+        function setQABugSort(field) {
+            if (qaBugSortField === field) {
+                qaBugSortDir = qaBugSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                qaBugSortField = field;
+                qaBugSortDir = 'asc';
+            }
+            if (viewMode === 'qa') {
+                renderQAView(lastTickets);
+            }
+        }
+
         function renderTickets(tickets) {
             lastTickets = tickets || [];
             const container = document.getElementById('ticketsContainer');
@@ -5855,6 +6746,11 @@
 
             if (viewMode === 'dev') {
                 renderDevView(tickets);
+                return;
+            }
+
+            if (viewMode === 'qa') {
+                renderQAView(tickets);
                 return;
             }
 
